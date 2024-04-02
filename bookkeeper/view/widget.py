@@ -1,56 +1,91 @@
 import sys
 import random
-from PySide6 import QtWidgets
-
-
-class MyWindow(QtWidgets.QWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.layout = QtWidgets.QVBoxLayout()
-    def addTableWidget(self, data:list[list[str]]):
-        expenses_table = QtWidgets.QTableWidget(4, 20)
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QTableWidget,QHeaderView, \
+    QAbstractItemView, QSizePolicy, QLabel, QTableWidgetItem, QApplication, \
+    QPushButton,QDialog, QLineEdit, QComboBox)
+class EditDialog(QDialog):
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        self.setWindowTitle("Редактирование Категорий")
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        self.resize(500,500)
+        
+        
+class MyWindow(QWidget):
+    def __init__(self, data_expense:list[list[str]], data_budger:list[list[str]]):
+        super().__init__()
+        self.layout = QVBoxLayout()
+        
+        self.expense_widget_table= self.expense_widget(data_expense)
+        self.layout.addLayout(widget_with_label("Расходы", self.expense_widget_table))
+        
+        self.budget_widget_table = self.budget_widget(data_budger)
+        self.layout.addLayout(widget_with_label("Бюджет", self.budget_widget_table))
+        
+        self.layout.addLayout(widget_with_label('Сумма', QLineEdit('0')))
+        
+        self.edit_button = QPushButton("Редактировать Категории")
+        self.edit_button.clicked.connect(self.edit_category)
+        self.layout.addWidget(self.edit_button)
+        
+        self.add_button = QPushButton("Add")
+        self.add_button.clicked.connect(lambda:self.add_row(self.expense_widget_table))
+        self.layout.addWidget(self.add_button)
+        
+        
+        self.setLayout(self.layout)
+    def expense_widget(self, data:list[list[str]])-> QTableWidget:
+        expenses_table = QTableWidget(4, len(data))
         expenses_table.setColumnCount(4)
-        expenses_table.setRowCount(20)
+        expenses_table.setRowCount(len(data))
         
         expenses_table.setHorizontalHeaderLabels(
             "Дата Сумма Категория Комментарий".split())
 
         header = expenses_table.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
 
-        expenses_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        expenses_table.setEditTriggers(QTableWidget.DoubleClicked)
         expenses_table.verticalHeader().hide()
 
         set_data(expenses_table, data)
-        expenses_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.layout.addLayout(widget_with_label("Расходы", expenses_table))
-        self.setLayout(self.layout)
-    def addBudgetWidget(self, data:list[list[str]])->None:
-        budget_table = QtWidgets.QTableWidget(2, 3)
+        expenses_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        return expenses_table
+        
+    def budget_widget(self, data:list[list[str]])->QTableWidget:
+        budget_table = QTableWidget(2, 3)
         
         budget_table.setColumnCount(2)
         budget_table.setRowCount(3)
         budget_table.setHorizontalHeaderLabels(['Сумма', 'Бюджет'])
         budget_table.setVerticalHeaderLabels(['День', 'Неделя', 'Месяц'])
-        budget_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        budget_table.setEditTriggers(QTableWidget.DoubleClicked)
         
         set_data(budget_table, data)
-        budget_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.layout.addLayout(widget_with_label("Бюджет", budget_table))
-        self.setLayout(self.layout)
-
-    def addCategoryWidget(self):
-        pass
+        budget_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        return budget_table    
+    
+    def edit_category(self):
+        edit_dialog = EditDialog(self)
+        edit_dialog.exec()
+        
+    def add_row(self, table:QTableWidget)-> None:
+        row_count = table.rowCount()
+        table.insertRow(row_count)
+        
+      
 def set_data(tableWidget, data: list[list[str]])->None:
     for i, row in enumerate(data):
         for j, x in enumerate(row):
-            tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(x.capitalize()))
-def widget_with_label(text:str, widget:QtWidgets.QWidget)->QtWidgets.QVBoxLayout:
-    hl = QtWidgets.QVBoxLayout()
-    hl.addWidget(QtWidgets.QLabel(text))
+            tableWidget.setItem(i, j, QTableWidgetItem(x.capitalize()))
+def widget_with_label(text:str, widget:QWidget)->QHBoxLayout:
+    hl = QHBoxLayout()
+    hl.addWidget(QLabel(text))
     hl.addWidget(widget)
     return hl
 data1 = [row.split('|') for row in '''
@@ -82,12 +117,10 @@ data2 = [row.split('|') for row in '''
 '''.strip().splitlines()]
 
 
-app = QtWidgets.QApplication(sys.argv)
-window = MyWindow()
+app = QApplication(sys.argv)
+window = MyWindow(data1, data2)
 window.setWindowTitle('hello')
 window.resize(500,500)
 
-window.addTableWidget(data1)
-window.addBudgetWidget(data2)
 window.show()
 sys.exit(app.exec())
