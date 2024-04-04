@@ -61,3 +61,4 @@ def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
         last_name = name
         last_indent = indent
     return result
+

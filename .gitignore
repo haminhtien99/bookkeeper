@@ -1,3 +1,6 @@
+# check files
+bookkeeper/view/check_view.py
+example.db
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
