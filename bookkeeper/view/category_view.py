@@ -153,7 +153,7 @@ class CategoryWindow(QWidget):
         if parent_category in self.categories:
             if self.selected_item.text(0) in self.categories[parent_category]:
                 self.categories[parent_category].remove(self.selected_item.text(0))
-def get_categories(cat_repo: SQLiteRepository)->List[str]:
+def get_categories(cat_repo: SQLiteRepository)->dict[str: int]:
     """
     Получить список категорий из репозитория
     """

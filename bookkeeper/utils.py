@@ -64,21 +64,3 @@ def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
         last_indent = indent
     return result
 
-def class_name(name:str, values:dict)-> T: 
-    if name == 'Budget':
-        return Budget(pk = values['pk'],
-                      day = values['day'], 
-                      week = values['week'],
-                      month = values['month'] )
-    elif name == 'Category':
-        return Category(pk = values['pk'],
-                        name = values['name'],
-                        parent = values['parent'])
-    elif name == 'Expense':
-        return Expense(pk = values['pk'],
-                       expense_date= values['expense_date'],
-                       comment= values['comment'],
-                       amount = values['amount'],
-                       category= values['category'])
-    else:
-        raise ValueError(f'Unknown class name: {name}')

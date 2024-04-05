@@ -6,7 +6,9 @@ from itertools import count
 from typing import Any, cast
 
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
-from bookkeeper.utils import class_name
+from bookkeeper.models.budget import Budget
+from bookkeeper.models.category import Category
+from bookkeeper.models.expense import Expense
 from inspect import get_annotations
 class SQLiteRepository(AbstractRepository[T]):
     def __init__(self, db_file: str, cls: type) -> None:
@@ -84,7 +86,59 @@ class SQLiteRepository(AbstractRepository[T]):
             cur = conn.cursor()
             cur.execute(f"DELETE FROM {self.table_name} WHERE pk = {pk}")
         cur.close()
+    
+    def table_exists(self):
+        """
+        Проверить, существует ли таблица
+        """
+        with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            cur.execute(f"SELECT name FROM sqlite_master WHERE type = 'table' AND name = '{self.table_name}'")
+            row = cur.fetchone()
+            if row is None:
+                return False
+        return True
+        
+    def create_table_db(self):
+        """
+        Создать таблицу, если не существует
+        """
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
 
+        query_budget = ''' 
+        CREATE TABLE IF NOT EXISTS budget (
+                    pk INTEGER PRIMARY KEY,
+                    day FLOAT,
+                    week FLOAT,
+                    month FLOAT
+        '''
+        query_category = ''' 
+        CREATE TABLE IF NOT EXISTS category (
+                    pk INTEGER PRIMARY KEY,
+                    name TEXT,
+                    parent INTEGER'''
+def class_name(name:str, values:dict)-> T: 
+    """
+    Преобразовывает словарь в объект класса
+    """
+    if name == 'Budget':
+        return Budget(pk = values['pk'],
+                      day = values['day'], 
+                      week = values['week'],
+                      month = values['month'] )
+    elif name == 'Category':
+        return Category(pk = values['pk'],
+                        name = values['name'],
+                        parent = values['parent'])
+    elif name == 'Expense':
+        return Expense(pk = values['pk'],
+                       expense_date= values['expense_date'],
+                       comment= values['comment'],
+                       amount = values['amount'],
+                       category= values['category'])
+    else:
+        raise ValueError(f'Unknown class name: {name}')
 # class Users:
 #     pk:int
 #     def __init__(self, pk, username, email):
