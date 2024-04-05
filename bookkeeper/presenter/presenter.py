@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QApplication, QDialog, QPush
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QCloseEvent
 
-from bookkeeper.view.category_view import CategoryWindow, category_main_window
+from bookkeeper.view.category_view import CategoryWindow, list_category_widget
 from bookkeeper.view.budget_view import SetBudgetWindow, budget_main_window
 from bookkeeper.view.expense_view import ExpenseWindow
 from bookkeeper.view.view_utils import show_warning_dialog
@@ -65,7 +65,7 @@ class MainWindow(QWidget):
             ls_categories.append(item)
             for i in value:
                 ls_categories.append(i)
-        self.show_category = category_main_window(ls_categories)
+        self.show_category = list_category_widget(ls_categories)
         self.layout.addLayout(self.show_category)
         
         self.edit_category_button = QPushButton("Редактировать Категории")

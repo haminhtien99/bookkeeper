@@ -6,7 +6,7 @@ from itertools import count
 from typing import Any, cast
 
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
-
+from bookkeeper.utils import class_name
 from inspect import get_annotations
 class SQLiteRepository(AbstractRepository[T]):
     def __init__(self, db_file: str, cls: type) -> None:
@@ -22,43 +22,53 @@ class SQLiteRepository(AbstractRepository[T]):
             cur = conn.cursor()
             cur.execute('PRAGMA foreign_keys = ON')
             cur.execute(f"INSERT INTO {self.table_name} ({names}) VALUES ({p})", values)
-        cur.close()
+        conn.close()
         return obj.pk
     def get(self, pk: int) -> T | None:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             names = ', '.join(self.fields.keys())
             query = f"SELECT {names} FROM {self.table_name} WHERE pk = {pk}"
-            print(query)
             cur.execute(query)
             row = cur.fetchone()
             if row is None:
                 return None
-        cur.close()
+        conn.close()
         obj_dict = dict(zip(self.fields.keys(), row))
         for field, value in obj_dict.items():
             if not isinstance(value, self.fields[field]):
                 # Если тип не соответствует ожидаемому, возвращаем None
                 return None
         obj_dict['pk'] = pk
-        
-        return obj_dict
+        obj = class_name(self.table_name.capitalize(),obj_dict)
+        return obj
 
     def get_all(self, where: dict[str, Any]|None = None)->list[T]:
         
         with sqlite3.connect(self.db_file) as conn:
+            cur = conn.cursor()
+            cur.execute(f"PRAGMA table_info({self.table_name})")
+            columns_info = cur.fetchall()
+            column_names = [column[1] for column in columns_info]
             if where is None:
-                cur = conn.cursor()
+                
                 query = f"SELECT * FROM {self.table_name}"
                 cur.execute(query)
                 rows = cur.fetchall()
             else:
-                cur = conn.cursor()
+                
                 query = f"SELECT * FROM {self.table_name} WHERE " + " AND ".join([f"{k} = ?" for k in where.keys()])
                 cur.execute(query, tuple(where.values()))
                 rows = cur.fetchall()
-        cur.close()
-        return rows
+        conn.close()
+        list_obj_dict = []
+        for row in rows:
+            obj_dict = dict(zip(column_names, row))
+            
+            obj_dict['pk'] = row[0]
+            obj = class_name(self.table_name.capitalize(),obj_dict)
+            list_obj_dict.append(obj)
+        return list_obj_dict
     def update(self, obj: T) -> None:
         if obj.pk == 0:
             raise ValueError('attempt to update object with unknown primary key')
@@ -68,7 +78,7 @@ class SQLiteRepository(AbstractRepository[T]):
             names = ", ".join(self.fields.keys())
             query =f"UPDATE {self.table_name} SET {names} WHERE pk = {obj.pk}"
             cur.execute(query, values)
-        cur.close()
+        conn.close()
     def delete(self,pk: int)-> None:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
