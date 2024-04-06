@@ -15,70 +15,99 @@ from bookkeeper.view.category_view import AddCategoryDialog
 from functools import partial
 from typing import List
 import datetime
-class AddExpenseDialog(QDialog):
-    def __init__(self, exp_repo: SQLiteRepository, cat_repo: SQLiteRepository)-> None:
+class ChangeExpenseDialog(QDialog):
+    """
+    Диалог для добавлеяния или изменения расхода
+    """
+    def __init__(self,
+                 cat_repo: SQLiteRepository,
+                 title:str,
+                 data_row: dict[str, str|float|int]| None = None )-> None:
         super().__init__()
-        self.setWindowTitle('Add Expense')
+        self.setWindowTitle(title)
         
         layout = QVBoxLayout()
         self.setLayout(layout)
-
+        self.data_row = data_row
         self.expense_date_line_edit = QLineEdit()
-        layout.addLayout(h_widget_with_label('Дата расхода',self.expense_date_line_edit))
+        if self.data_row is not None:
+            self.expense_date_line_edit.setText(self.data_row['expense_date'])
+        layout.addLayout(h_widget_with_label('Дата расхода(YYYY-MM-DD)',self.expense_date_line_edit))
 
         self.amount_line_edit = QLineEdit()
+        if self.data_row is not None:
+            self.amount_line_edit.setText(str(self.data_row['amount']))
         layout.addLayout(h_widget_with_label('Сумма',self.amount_line_edit))
         
         self.cat_repo = cat_repo
-        self.exp_repo = exp_repo
-        
-        
-        self.categories = get_categories(cat_repo)
+        self.categories = get_categories(self.cat_repo)
         self.combobox = QComboBox()
-        
-        # print(self.categories,self.categories.keys())
-        
-        self.combobox.addItems(self.categories.keys())
-        h_box = QHBoxLayout()
-        h_box.addLayout(h_widget_with_label('Категории', self.combobox))
-        
-        add_category_button = QPushButton('Новая категория')
-        add_category_button.clicked.connect(self.add_category)
-
-        h_box.addWidget(add_category_button)
-        layout.addLayout(h_box)
+        self.combobox.addItems(self.categories)
+        self.category_widget = list_category_widget(cat_repo)
+        layout.addLayout(self.category_widget)
         
         self.comment_line_edit = QLineEdit()
+        if self.data_row is not None:
+            self.comment_line_edit.setText(self.data_row['comment'])
         layout.addLayout(h_widget_with_label('Комметарий',self.comment_line_edit))
 
         
-        add_expenses_button = QPushButton('Add')
-        add_expenses_button.clicked.connect(self.add_expense)
-        layout.addWidget(add_expenses_button)
+        apply_change_button = QPushButton('Применять')
+        apply_change_button.clicked.connect(self.apply_change)
+        layout.addWidget(apply_change_button)
+        
+        return_button = QPushButton('Вернуть', clicked=self.reject)
+        layout.addWidget(return_button)
+        
+        
 
-        self.changes_add = None
-    def add_expense(self)-> None:
+        self.change = None # История изменения
+
+    def apply_change(self):
         comment = self.comment_line_edit.text()
-        amount = float(self.amount_line_edit.text())
-        category = self.cat_repo.get(self.categories[self.combobox.currentText()]) 
-        expense_date = str(self.expense_date_line_edit.text())
+        amount = self.amount_line_edit.text().strip()
+        expense_date = self.expense_date_line_edit.text().strip()
+        if amount:
+            print('True')
+        else:
+            print('False')
+        if amount is None or expense_date is None:
+            show_warning_dialog('Ошибка! Дата и сумма должны не пусты')
+            return
+        else:
+            if not self.validate_date(expense_date):
+                show_warning_dialog('Ошибка! Неверный формат даты')
+                return
+            try:
+                amount = float(amount)
+            except ValueError:
+                show_warning_dialog('Ошибка!  Сумма должна действительной')
+                return
+        self.accept()
+        category_obj = self.cat_repo.get(self.categories[self.combobox.currentText()])
+        cat  = category_obj.pk
         added_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        if added_date and amount:
-            new_expense = Expense(comment = comment, 
-                                  amount = amount, 
-                                  category = category,
-                                  added_date = added_date, 
-                                  expense_date = expense_date)
-            
-            self.change_add = ('add', new_expense)
-            self.accept()
-        else:
-            show_warning_dialog('Ошибка! Дата и Сумма не заполнены. Нет изменения')
-
-    def add_category(self):
-        pass
-        
+        # if amount:
+        #     new_expense = Expense(comment = comment, 
+        #                           amount = amount, 
+        #                           category = cat,
+        #                           added_date = added_date, 
+        #                           expense_date = expense_date)
+        #     if self.data_row is not None:
+        #         new_expense.pk = self.data_row['pk']
+        #         self.change = ('update', new_expense)
+        #     else:
+        #         self.change = ('add', new_expense)
+        #     self.accept()
+        # else:
+        #     show_warning_dialog('Ошибка! Дата и Сумма не заполнены. Нет изменения')
+    def validate_date(self, date_str: str)->bool:
+        try:
+            datetime.datetime.strptime(date_str, "%Y-%m-%d")
+            return True
+        except ValueError:
+            return False
 class ExpenseWindow(QWidget):
     """
     Главное окно приложения.
@@ -109,14 +138,14 @@ class ExpenseWindow(QWidget):
         self.delete_button.clicked.connect(self.delete_row)
         self.layout.addWidget(self.delete_button)
 
-        self.edit_button = QPushButton('Редактировать ячейку')
-        self.edit_button.clicked.connect(self.edit_cell)
+        self.edit_button = QPushButton('Редактировать')
+        self.edit_button.clicked.connect(self.edit_expense_dialog)
         self.layout.addWidget(self.edit_button)
 
         self.save_button = QPushButton('Сохранить')
         self.save_button.clicked.connect(self.save_changes)
         self.layout.addWidget(self.save_button)
-        
+
         self.setLayout(self.layout)
         
 
@@ -183,47 +212,53 @@ class ExpenseWindow(QWidget):
         """
         Открывает диалог добавления нового расхода.
         """
-        dialog = AddExpenseDialog(self.exp_repo, self.cat_repo)
+        dialog = ChangeExpenseDialog(cat_repo = self.cat_repo,
+                                     title = 'Add')
         dialog.exec()
-        self.changes.append(dialog.change_add)
-        if dialog.change_add is not None:
-            exp = dialog.change_add[1]
+        
+        if dialog.change is not None:
+            self.changes.append(dialog.change)
+            exp = dialog.change[1]
             # Задавать автомотически pk у нового расхода - max(self.ls_pk.values()) + 1
-            self.ls_pk[self.expense_table.rowCount()] = max(self.ls_pk.values()) + 1
-            if self.ls_pk[self.expense_table.rowCount()] > self.expense_table.rowCount():
+            exp.pk = 1 if len(self.ls_pk) == 0 else max(self.ls_pk.values()) + 1
+            self.ls_pk[len(self.ls_pk)] = exp.pk
+            
+            if len(self.ls_pk) > self.expense_table.rowCount():
                 self.expense_table.insertRow(self.expense_table.rowCount())
+
             cat_info =  self.cat_repo.get(exp.category)
             cat = cat_info.name
             row = [exp.expense_date, str(exp.amount), cat, exp.comment]
             for j, value in enumerate(row):
                 self.expense_table.setItem(max(self.ls_pk.values()) - 1, j, QTableWidgetItem(value))
 
-    def edit_cell(self)->None:
+    def edit_expense_dialog(self)->None:
         """
-        Открывает диалог редактирования ячейки таблицы.
+        Открывает диалог редактирования строки таблицы.
         """
         selected_row = self.expense_widget_table.currentRow()
-        selected_column = self.expense_widget_table.currentColumn()
 
-        if selected_row :
-            item = self.expense_table.item(selected_row, selected_column)
-            new_value, ok = QInputDialog.getText(self,'Изменить данные', "Новое значение")
-            if ok:
-                item.setText(new_value)
-                pk = self.ls_pk[selected_row] 
-                expense_date = self.expense_table.item(selected_row, 0).text()
-                amount = float(self.expense_table.item(selected_row, 1).text())
-                name_cat = self.expense_table.item(selected_row, 2).text()
-                category = self.cat_repo.get(self.categories[name_cat]) 
-                comment = self.expense_table.item(selected_row, 3).text()
-                added_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_expense = Expense(comment = comment, 
-                                      amount = amount, 
-                                      category = category,
-                                      added_date = added_date, 
-                                      expense_date = expense_date, 
-                                      pk = pk)
-                self.changes.append(('update', new_expense))
+        # if selected_row :
+        pk = self.ls_pk[selected_row] 
+        expense_date = self.expense_table.item(selected_row, 0).text()
+        amount = float(self.expense_table.item(selected_row, 1).text())
+        comment = self.expense_table.item(selected_row, 3).text()
+        
+        data_row = {'pk':pk, 'amount':amount, 
+                    'expense_date':expense_date, 'comment':comment}
+        dialog = ChangeExpenseDialog(cat_repo = self.cat_repo,
+                                        title = 'Edit',
+                                        data_row = data_row)
+        dialog.exec()
+        if dialog.change is not None:
+            self.changes.append(dialog.change)
+            exp = dialog.change[1]
+            cat_info =  self.cat_repo.get(exp.category)
+            cat = cat_info.name
+            row = [exp.expense_date, str(exp.amount), cat, exp.comment]
+            for j, value in enumerate(row):
+                self.expense_table.setItem(selected_row, j, QTableWidgetItem(value))
+
     def save_changes(self):
         """
         Сохраняет все изменения в таблицу.
@@ -238,8 +273,7 @@ class ExpenseWindow(QWidget):
                     self.exp_repo.delete(change[1])
             show_warning_dialog('Успешно сохранить категории')
             self.changes = []
-            # elif change[0] == 'edit':
-            #     self.exp_repo.edit(change[1])   
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     cat_repo = SQLiteRepository('bookkeeper/view/new_database.db', Category)
@@ -251,4 +285,5 @@ if __name__ == '__main__':
     window.resize(500,500)
     
     window.show()
+
     sys.exit(app.exec())

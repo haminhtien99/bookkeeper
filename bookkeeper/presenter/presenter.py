@@ -36,7 +36,13 @@ class BudgetDialog(QDialog):
         self.resize(500, 500)
         self.layout = QVBoxLayout()
         self.layout.addWidget(self.budget_window)
-        self.setLayout(self.layout)
+        self.setLayout(self.lah_box.addLayout(h_widget_with_label('Категории', self.combobox))
+        
+        add_category_button = QPushButton('Новая категория')
+        add_category_button.clicked.connect(self.add_category)
+
+        h_box.addWidget(add_category_button)
+        layout.addLayout(h_box)yout)
 class MainWindow(QWidget):
     """
     Главное окно приложения.

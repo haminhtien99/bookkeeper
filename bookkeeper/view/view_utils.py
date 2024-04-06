@@ -1,21 +1,13 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, \
-                               QLabel, QTableWidgetItem, QPushButton,QDialog)
+                               QLabel, QTableWidgetItem, QMessageBox)
 
 
 
 def show_warning_dialog(message: str)-> None:
     """Отображает диалог предупреждения."""
-    dialog = QDialog()
-    dialog.setWindowTitle("Внимание")
-    dialog.resize(100, 80)
-    label = QLabel(message)
-    ok_button = QPushButton("OK")
-    ok_button.clicked.connect(dialog.accept)
-    layout = QVBoxLayout()
-    layout.addWidget(label)
-    layout.addWidget(ok_button)
-    dialog.setLayout(layout)
-    dialog.exec()
+    msg_box = QMessageBox()
+    msg_box.setText(message)
+    msg_box.exec()
 
 
 def set_data(tableWidget, data: list[list[str]])->None:
