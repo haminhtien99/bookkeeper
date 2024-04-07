@@ -77,8 +77,8 @@ class SQLiteRepository(AbstractRepository[T]):
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             values = [getattr(obj, x) for x in self.fields]
-            names = ", ".join(self.fields.keys())
-            query =f"UPDATE {self.table_name} SET {names} WHERE pk = {obj.pk}"
+            set_clause = ', '.join(f'{field} = ?' for field in self.fields.keys())
+            query =f"UPDATE {self.table_name} SET {set_clause} WHERE pk = {obj.pk}"
             cur.execute(query, values)
         conn.close()
     def delete(self,pk: int)-> None:
@@ -99,6 +99,7 @@ class SQLiteRepository(AbstractRepository[T]):
                 return False
         return True
         
+     
     def create_table_db(self):
         """
         Создать таблицу, если не существует

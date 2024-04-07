@@ -1,9 +1,9 @@
-from PySide6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QWidget, \
-    QVBoxLayout, QPushButton, QDialog, QLineEdit, QDialogButtonBox, \
-        QHBoxLayout, QComboBox
+from PySide6.QtWidgets import (QApplication, QTreeWidget, QTreeWidgetItem, 
+                               QWidget, QVBoxLayout, QPushButton, QDialog, 
+                               QLineEdit, QDialogButtonBox, QHBoxLayout, QComboBox)
 from typing import Optional, List
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
-from bookkeeper.view.view_utils import show_warning_dialog, h_widget_with_label
+from bookkeeper.utils import show_warning_dialog, h_widget_with_label
 class AddCategoryDialog(QDialog):
     """
     Модальное окно для добавления новой категории
@@ -153,11 +153,7 @@ class CategoryWindow(QWidget):
         if parent_category in self.categories:
             if self.selected_item.text(0) in self.categories[parent_category]:
                 self.categories[parent_category].remove(self.selected_item.text(0))
-
-
-
-    
-
+                
 def get_categories(cat_repo: SQLiteRepository)->dict[str: int]:
     """
     Получить список категорий из репозитория
