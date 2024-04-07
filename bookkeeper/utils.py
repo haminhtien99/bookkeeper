@@ -9,6 +9,10 @@ from bookkeeper.models.expense import Expense
 from bookkeeper.repository.abstract_repository import T
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
                                QLabel, QTableWidgetItem, QMessageBox)
+from datetime import datetime, timedelta
+import sqlite3
+
+
 def _get_indent(line: str) -> int:
     return len(line) - len(line.lstrip())
 
@@ -98,3 +102,19 @@ def v_widget_with_label(text:str, widget:QWidget)->QVBoxLayout:
     hl.addWidget(QLabel(text))
     hl.addWidget(widget)
     return hl
+
+def get_day_week_month():
+    """
+    Возвращает текущий день, неделю и месяц.
+    """
+    today = datetime.now()
+    start_of_week = today - timedelta(days=today.weekday())
+    end_of_week = today + timedelta(days=6)
+
+    start_of_month = today.replace(day=1)
+    next_month = start_of_month.replace(month =start_of_month.month+ 1)
+    end_of_month = next_month - timedelta(days = 1)
+    return {'today':today.strftime('%Y-%m-%d'),
+            'this_week': [start_of_week.strftime('%Y-%m-%d'), end_of_week.strftime('%Y-%m-%d')],
+            'this_month': [start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')]}
+

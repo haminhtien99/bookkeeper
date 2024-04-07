@@ -45,7 +45,8 @@ class SQLiteRepository(AbstractRepository[T]):
         obj = class_name(self.table_name.capitalize(),obj_dict)
         return obj
 
-    def get_all(self, where: dict[str, Any]|None = None)->list[T]:
+    def get_all(self, where: dict[str, Any]|None = None,
+                value_range = False)->list[T]:
         
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
@@ -56,6 +57,14 @@ class SQLiteRepository(AbstractRepository[T]):
                 
                 query = f"SELECT * FROM {self.table_name}"
                 cur.execute(query)
+                rows = cur.fetchall()
+            elif value_range is True: # Найти значения в определенном диапазоне
+                key = next(iter(where.keys()))
+                query = f"""
+                SELECT * FROM {self.table_name}
+                WHERE {key} >=? AND {key} <=?
+                """
+                cur.execute(query, tuple(where[key]))
                 rows = cur.fetchall()
             else:
                 
@@ -112,13 +121,29 @@ class SQLiteRepository(AbstractRepository[T]):
                     pk INTEGER PRIMARY KEY,
                     day FLOAT,
                     week FLOAT,
-                    month FLOAT
+                    month FLOAT)
         '''
         query_category = ''' 
         CREATE TABLE IF NOT EXISTS category (
                     pk INTEGER PRIMARY KEY,
                     name TEXT,
-                    parent INTEGER'''
+                    parent INTEGER
+                    )'''
+        query_expense = ''' 
+        CREATE TABLE IF NOT EXISTS expense (
+                    pk INTEGER PRIMARY KEY,
+                    comment TEXT,
+                    amount FLOAT,
+                    category INTEGER,
+                    added_date TEXT,
+                    expense_date TEXT
+                    )'''
+        if self.table_name == 'budget':
+            cursor.execute(query_budget)
+        elif self.table_name == 'category':
+            cursor.execute(query_category)
+        elif self.table_name == 'expense':
+            cursor.execute(query_expense) 
 def class_name(name:str, values:dict)-> T: 
     """
     Преобразовывает словарь в объект класса
@@ -140,6 +165,7 @@ def class_name(name:str, values:dict)-> T:
                        category= values['category'])
     else:
         raise ValueError(f'Unknown class name: {name}')
+
 # class Users:
 #     pk:int
 #     def __init__(self, pk, username, email):
