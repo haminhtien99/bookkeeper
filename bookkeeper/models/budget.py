@@ -1,3 +1,6 @@
+"""
+Модель Бюджет
+"""
 from dataclasses import dataclass
 @dataclass
 class Budget:
@@ -8,8 +11,7 @@ class Budget:
     week - бюджет на неделю
     month - бюджет на месяц
     """
-    
-    day:float
-    week:float
-    month:float
-    pk:int = 0
+    day: float
+    week: float
+    month: float
+    pk: int = 0

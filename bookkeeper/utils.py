@@ -3,14 +3,10 @@
 """
 
 from typing import Iterable, Iterator
-from bookkeeper.models.budget import Budget
-from bookkeeper.models.category import Category
-from bookkeeper.models.expense import Expense
-from bookkeeper.repository.abstract_repository import T
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout,
-                               QLabel, QTableWidgetItem, QMessageBox)
 from datetime import datetime, timedelta
-import sqlite3
+from PySide6 import QtWidgets
+
+
 
 
 def _get_indent(line: str) -> int:
@@ -73,7 +69,7 @@ def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
 
 def show_warning_dialog(message: str, title:str = 'Warning')-> None:
     """Отображает диалог предупреждения."""
-    msg_box = QMessageBox()
+    msg_box = QtWidgets.QMessageBox()
     msg_box.setWindowTitle(title)
     msg_box.setText(message)
     msg_box.exec()
@@ -84,22 +80,22 @@ def set_data(tableWidget, data: list[list[str]])->None:
     """
     for i, row in enumerate(data):
         for j, x in enumerate(row):
-            tableWidget.setItem(i, j, QTableWidgetItem(x.capitalize()))
+            tableWidget.setItem(i, j, QtWidgets.QTableWidgetItem(x.capitalize()))
 
-def h_widget_with_label(text:str, widget:QWidget)->QHBoxLayout:
+def h_widget_with_label(text:str, widget:QtWidgets.QWidget)->QtWidgets.QHBoxLayout:
     """
     Возвращает горизонтальную раскладку, содержащую текст и виджет.
     """
-    hl = QHBoxLayout()
-    hl.addWidget(QLabel(text))
+    hl = QtWidgets.QHBoxLayout()
+    hl.addWidget(QtWidgets.QLabel(text))
     hl.addWidget(widget)
     return hl
-def v_widget_with_label(text:str, widget:QWidget)->QVBoxLayout:
+def v_widget_with_label(text:str, widget:QtWidgets.QWidget)->QtWidgets.QVBoxLayout:
     """
     Возвращает вертикальную раскладку, содержащую текст и виджет.
     """
-    hl = QVBoxLayout()
-    hl.addWidget(QLabel(text))
+    hl = QtWidgets.QVBoxLayout()
+    hl.addWidget(QtWidgets.QLabel(text))
     hl.addWidget(widget)
     return hl
 
@@ -117,4 +113,3 @@ def get_day_week_month():
     return {'today':today.strftime('%Y-%m-%d'),
             'this_week': [start_of_week.strftime('%Y-%m-%d'), end_of_week.strftime('%Y-%m-%d')],
             'this_month': [start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')]}
-

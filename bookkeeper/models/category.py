@@ -3,7 +3,7 @@
 """
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Iterator, List
 
 from ..repository.abstract_repository import AbstractRepository
 
@@ -76,15 +76,22 @@ class Category:
         def get_children(graph: dict[int | None, list['Category']],
                          root: int) -> Iterator['Category']:
             """ dfs in graph from root """
-            for x in graph[root]:
-                yield x
-                yield from get_children(graph, x.pk)
+            for node in graph[root]:
+                yield node
+                yield from get_children(graph, node.pk)
 
         subcats = defaultdict(list)
         for cat in repo.get_all():
             subcats[cat.parent].append(cat)
         return get_children(subcats, self.pk)
-
+    def get_children_first_node(self,
+                                repo: AbstractRepository['Category']
+                                ) -> List['Category']:
+        """
+        Получить все подкатегории из иерархии, т.е. непосредственные
+        подкатегории данной
+        """
+        return repo.get_all(where={'parent': self.pk})
     @classmethod
     def create_from_tree(
             cls,
