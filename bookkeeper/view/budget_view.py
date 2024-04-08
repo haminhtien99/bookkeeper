@@ -1,7 +1,6 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton,
                                QLineEdit, QTableWidget, QDialog, QTableWidgetItem)
 
-from typing import Optional, List
 from bookkeeper.utils import (v_widget_with_label, h_widget_with_label, 
                               show_warning_dialog, get_day_week_month)
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
@@ -81,7 +80,7 @@ class SetBudgetDialog(QDialog):
         
         self.budget_dict = {'week':week,'month':month, 'day':day}
         return True
-class BudgetWindow(QWidget):
+class BudgetView(QWidget):
     """
     Виджет отображает бюджет в главном окне
     """
@@ -100,10 +99,6 @@ class BudgetWindow(QWidget):
         self.set_budget_button.clicked.connect(self.set_budget_dialog)
         self.layout.addWidget(self.set_budget_button)
         
-        self.save_button = QPushButton('Save')
-        self.save_button.clicked.connect(self.save_button_click)
-        self.layout.addWidget(self.save_button)
-
         self.setLayout(self.layout)
         self.change_budget = None
         
@@ -184,7 +179,6 @@ class BudgetWindow(QWidget):
         """
         Получить расход за день, неделю, месяц из таблицы расходов
         """
-        
         day_week_month = get_day_week_month()
 
         today = day_week_month['today'] 
@@ -193,19 +187,36 @@ class BudgetWindow(QWidget):
 
         day_sum = 0.
         for row in range(exp_table.rowCount()):
-            item_date = datetime.strptime(exp_table.item(row, 0).text(), "%Y-%m-%d")
-            if today == item_date :
-                day_sum += float(exp_table.item(row, 1))
+            item_date = exp_table.item(row, 0)
+            item_amount = exp_table.item(row,1)
+
+            if item_date is not None and item_amount is not None \
+                and item_date.text() and item_amount.text():
+                
+                    item_date = item_date.text()
+                    if today == item_date :
+                        day_sum += float(exp_table.item(row, 1).text())
+
         week_sum = 0.
         for row in range(exp_table.rowCount()):
-            item_date = datetime.strptime(exp_table.item(row, 0).text(), "%Y-%m-%d")
-            if this_week[0] <= item_date <= this_week[1]:
-                week_sum += float(exp_table.item(row, 1))
+            item_date = exp_table.item(row, 0)
+            item_amount = exp_table.item(row,1)
+
+            if item_date is not None and item_amount is not None \
+                and item_date.text() and item_amount.text():
+                item_date = item_date.text()
+                if this_week[0] <= item_date <= this_week[1]:
+                    week_sum += float(exp_table.item(row, 1).text())
         month_sum = 0.
         for row in range(exp_table.rowCount()):
-            item_date = datetime.strptime(exp_table.item(row, 0).text(), "%Y-%m-%d")
-            if this_month[0] <= item_date <= this_month[1]:
-                month_sum += float(exp_table.item(row, 1))
+            item_date = exp_table.item(row, 0)
+            item_amount = exp_table.item(row,1)
+
+            if item_date is not None and item_amount is not None \
+                and item_date.text() and item_amount.text():
+                item_date = item_date.text()
+                if this_month[0] <= item_date <= this_month[1]:
+                    month_sum += float(exp_table.item(row, 1).text())
 
         self.budget_table.setItem(0, 0, QTableWidgetItem(str(day_sum)))
         self.budget_table.setItem(1, 0, QTableWidgetItem(str(week_sum)))
@@ -226,7 +237,7 @@ class BudgetWindow(QWidget):
                 self.budget_repo.add(self.change_budget[1])
             else:
                 self.budget_repo.update(self.change_budget[1])
-            show_warning_dialog(message='Успешно сохранить бюджет', title= 'Сохранение')
+            # show_warning_dialog(message='Успешно сохранить бюджет', title= 'Сохранение')
 
             self.change_budget = None
 if __name__ == '__main__':
@@ -235,9 +246,13 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     budget_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Budget)
     exp_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Expense)
-    window = BudgetWindow(budget_repo=budget_repo, exp_repo= exp_repo)
+    window = BudgetView(budget_repo=budget_repo, exp_repo= exp_repo)
     window.setWindowTitle('Set Budget')
     window.resize(500,500)
+    save_button = QPushButton('Save')
+    save_button.clicked.connect(window.save_button_click)
+    window.layout.addWidget(save_button)
 
+    window.setLayout(window.layout)
     window.show()
     sys.exit(app.exec())

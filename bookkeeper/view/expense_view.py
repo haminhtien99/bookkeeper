@@ -9,9 +9,9 @@ from bookkeeper.view.category_view import get_categories
 from bookkeeper.models.expense import Expense
 from bookkeeper.models.category import Category
 from bookkeeper.view.change_expense_dialog import ChangeExpenseDialog
-class ExpenseWindow(QWidget):
+class ExpenseView(QWidget):
     """
-    Главное окно расхода.
+    Виджет расхода в главном окне
     """
     def __init__(self, cat_repo: SQLiteRepository, 
                  exp_repo: SQLiteRepository)->None:
@@ -22,9 +22,9 @@ class ExpenseWindow(QWidget):
         self.categories = get_categories(cat_repo)
 
         self.exp_repo = exp_repo
-        self.ls_pk = dict()
         
         self.expense_table = QTableWidget()
+        self.ls_pk = dict() # Список pk каждой строки таблцы в QTableWidget
         self.build_expense_widget()
         
         self.layout.addWidget(QLabel('Расходы'))
@@ -41,10 +41,6 @@ class ExpenseWindow(QWidget):
         self.edit_button = QPushButton('Редактировать')
         self.edit_button.clicked.connect(self.edit_expense_dialog)
         self.layout.addWidget(self.edit_button)
-
-        self.save_button = QPushButton('Сохранить')
-        self.save_button.clicked.connect(self.save_changes)
-        self.layout.addWidget(self.save_button)
 
         self.setLayout(self.layout)
 
@@ -67,29 +63,13 @@ class ExpenseWindow(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.Stretch)
 
-        self.expense_table.setEditTriggers(QAbstractItemView.SelectedClicked)
+        self.expense_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.expense_table.verticalHeader().hide()
 
         if self.exp_repo.table_exists() is True:
             self.set_data()
         self.expense_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-                
-    def delete_row(self)-> None:
-        """
-        Удаляет выбранную строку из таблицы. Автоматически удаляет первую строку
-        """
-        selected_row = self.expense_table.currentRow()
-        if self.is_row_empty(selected_row ) is True:
-            show_warning_dialog(message='Выберите не пустую строку для удаления',
-                                title='Delete')
-            return
-        if selected_row >= 0:
-            self.expense_table.removeRow(selected_row)
-            pk = self.ls_pk[selected_row]
-            self.changes.append(('delete', pk))
-        else:
-            show_warning_dialog(message='В таблице нет строки', title='Delete')
-    
+
     def set_data(self)-> None:
         """
         Устанавливает данные в таблицу.
@@ -106,6 +86,30 @@ class ExpenseWindow(QWidget):
             row = [exp.expense_date, str(exp.amount), cat, exp.comment]
             for j, value in enumerate(row):
                 self.expense_table.setItem(i, j, QTableWidgetItem(value))
+
+    def delete_row(self)-> None:
+        """
+        Удаляет выбранную строку из таблицы. Автоматически удаляет первую строку
+        """
+        selected_row = self.expense_table.currentRow()
+        if self.is_row_empty(selected_row ) is True:
+            show_warning_dialog(message='Выберите не пустую строку для удаления',
+                                title='Delete')
+            return
+        if selected_row >= 0:
+
+            self.expense_table.removeRow(selected_row)
+            pk = self.ls_pk[selected_row]
+            self.changes.append(('delete', pk))
+            
+            # Update self.ls_pk
+            if selected_row < len(self.ls_pk) - 1:
+                for i in range(selected_row, len(self.ls_pk) - 1):
+                    self.ls_pk[i] = self.ls_pk[i+1]
+            del self.ls_pk[len(self.ls_pk) - 1]
+            
+        else:
+            show_warning_dialog(message='В таблице нет строки', title='Delete')
 
     def add_expense_dialog(self)->None:
         """
@@ -162,7 +166,7 @@ class ExpenseWindow(QWidget):
             for j, value in enumerate(row):
                 self.expense_table.setItem(selected_row, j, QTableWidgetItem(value))
 
-    def save_changes(self):
+    def save_button_click(self):
         """
         Сохраняет все изменения в таблицу.
         """
@@ -175,9 +179,8 @@ class ExpenseWindow(QWidget):
                 elif change[0] == 'delete':
                     self.exp_repo.delete(change[1])
                 elif change[0] == 'update':
-                    print('update')
                     self.exp_repo.update(change[1])
-            show_warning_dialog(message='Успешно сохранить категории', title= 'Сохранение')
+            # show_warning_dialog(message='Успешно сохранить категории', title= 'Сохранение')
             self.changes = []
     def is_row_empty(self, selected_rơw:int)->bool:
         """
@@ -194,10 +197,15 @@ if __name__ == '__main__':
     exp_repo = SQLiteRepository('bookkeeper/view/new_database.db', Expense)
     
     
-    window = ExpenseWindow(cat_repo, exp_repo)
+    window = ExpenseView(cat_repo, exp_repo)
     window.setWindowTitle('Category')
     window.resize(500,500)
-    
+
+    save_button = QPushButton('Сохранить')
+    save_button.clicked.connect(window.save_button_click)
+    window.layout.addWidget(save_button)
+
+    window.setLayout(window.layout)
     window.show()
 
     sys.exit(app.exec())
