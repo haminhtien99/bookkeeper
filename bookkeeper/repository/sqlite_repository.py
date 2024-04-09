@@ -18,6 +18,7 @@ class SQLiteRepository(AbstractRepository[T]):
         self.table_name = cls.__name__.lower()
         self.fields = get_annotations(cls, eval_str = True)
         self.fields.pop('pk')
+        self.cls = cls
     def add(self, obj: T) -> int:
         names = ', '.join(self.fields.keys())
         set_clause = ', '.join("?" * len(self.fields))
@@ -36,17 +37,16 @@ class SQLiteRepository(AbstractRepository[T]):
             cur.execute(query)
             row = cur.fetchone()
             if row is None:
-                return None
+                raise ValueError('attempt to update object with unknown primary key')
         conn.close()
         obj_dict = dict(zip(self.fields.keys(), row))
         for field, value in obj_dict.items():
             if not isinstance(value, self.fields[field]):
                 # Если тип не соответствует ожидаемому, возвращаем None
-                return None
+                return 
         obj_dict['pk'] = pk
-        obj = class_name(self.table_name.capitalize(),obj_dict)
+        obj = self.cls(**obj_dict)
         return obj
-
     def get_all(self, where: dict[str, Any]|None = None,
                 value_range = False)->list[T]:
         with sqlite3.connect(self.db_file) as conn:
@@ -76,7 +76,7 @@ class SQLiteRepository(AbstractRepository[T]):
         for row in rows:
             obj_dict = dict(zip(column_names, row))
             obj_dict['pk'] = row[0]
-            obj = class_name(self.table_name.capitalize(),obj_dict)
+            obj = self.cls(**obj_dict)
             list_obj_dict.append(obj)
         return list_obj_dict
     def update(self, obj: T) -> None:
@@ -90,6 +90,7 @@ class SQLiteRepository(AbstractRepository[T]):
             cur.execute(query, values)
         conn.close()
     def delete(self,pk: int)-> None:
+        self.get(pk)
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             cur.execute(f"DELETE FROM {self.table_name} WHERE pk = {pk}")
@@ -143,23 +144,23 @@ class SQLiteRepository(AbstractRepository[T]):
         elif self.table_name == 'expense':
             cursor.execute(query_expense)
         conn.close()
-def class_name(name:str, values:dict)-> T:
-    """
-    Преобразовывает словарь в объект класса
-    """
-    if name == 'Budget':
-        return Budget(pk = values['pk'],
-                      day = values['day'],
-                      week = values['week'],
-                      month = values['month'] )
-    if name == 'Category':
-        return Category(pk = values['pk'],
-                        name = values['name'],
-                        parent = values['parent'])
-    if name == 'Expense':
-        return Expense(pk = values['pk'],
-                       expense_date= values['expense_date'],
-                       comment= values['comment'],
-                       amount = values['amount'],
-                       category= values['category'])
-    raise ValueError(f'Unknown class name: {name}')
+# def class_name(name:str, values:dict)-> T:
+#     """
+#     Преобразовывает словарь в объект класса
+#     """
+#     if name == 'Budget':
+#         return Budget(pk = values['pk'],
+#                       day = values['day'],
+#                       week = values['week'],
+#                       month = values['month'] )
+#     if name == 'Category':
+#         return Category(pk = values['pk'],
+#                         name = values['name'],
+#                         parent = values['parent'])
+#     if name == 'Expense':
+#         return Expense(pk = values['pk'],
+#                        expense_date= values['expense_date'],
+#                        comment= values['comment'],
+#                        amount = values['amount'],
+#                        category= values['category'])
+#     raise ValueError(f'Unknown class name: {name}')

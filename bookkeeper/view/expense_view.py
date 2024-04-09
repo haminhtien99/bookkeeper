@@ -1,3 +1,6 @@
+"""
+Виджет для расхода
+"""
 import sys
 from PySide6 import QtWidgets
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
@@ -9,59 +12,47 @@ class ExpenseView(QtWidgets.QWidget):
     """
     Виджет расхода в главном окне
     """
-    def __init__(self, cat_repo: SQLiteRepository[Category], 
+    def __init__(self, cat_repo: SQLiteRepository[Category],
                  exp_repo: SQLiteRepository[Expense])->None:
         super().__init__()
         self.layout = QtWidgets.QVBoxLayout()
-        
         self.cat_repo = cat_repo
         self.exp_repo = exp_repo
         self.expense_table = QtWidgets.QTableWidget()
-        self.ls_pk = dict() # Список pk каждой строки таблцы в QtWidgets.QTableWidget
+        self.ls_pk = {} # Список pk каждой строки таблцы в QtWidgets.QTableWidget
         self.build_expense_widget()
-        
         self.layout.addWidget(QtWidgets.QLabel('Расходы'))
         self.layout.addWidget(self.expense_table)
-        
         self.add_button = QtWidgets.QPushButton("Новый расход")
         self.add_button.clicked.connect(self.add_expense_dialog)
         self.layout.addWidget(self.add_button)
-        
         self.delete_button = QtWidgets.QPushButton('Удалить расход')
         self.delete_button.clicked.connect(self.delete_row)
         self.layout.addWidget(self.delete_button)
-
         self.edit_button = QtWidgets.QPushButton('Редактировать')
         self.edit_button.clicked.connect(self.edit_expense_dialog)
         self.layout.addWidget(self.edit_button)
-
         self.setLayout(self.layout)
-
         self.changes = []       # История изменений
-
     def build_expense_widget(self)-> None:
         """
         Виджет для отображения таблицы расходов.
         """        
         columns = "Дата Сумма Категория Комментарий".split()
-        
-        
         self.expense_table.setColumnCount(4)
         self.expense_table.setRowCount(10)
         self.expense_table.setHorizontalHeaderLabels(columns)
-
         header = self.expense_table.horizontalHeader()
         header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
-
         self.expense_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         self.expense_table.verticalHeader().hide()
-
         if self.exp_repo.table_exists() is True:
             self.set_data()
-        self.expense_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.expense_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                         QtWidgets.QSizePolicy.Expanding)
 
     def set_data(self)-> None:
         """
@@ -116,7 +107,8 @@ class ExpenseView(QtWidgets.QWidget):
             cat = cat_info.name
             row = [exp.expense_date, str(exp.amount), cat, exp.comment]
             for j, value in enumerate(row):
-                self.expense_table.setItem(max(self.ls_pk.keys()), j, QtWidgets.QTableWidgetItem(value))
+                self.expense_table.setItem(max(self.ls_pk.keys()), j,
+                                           QtWidgets.QTableWidgetItem(value))
     def edit_expense_dialog(self)->None:
         """
         Открывает диалог редактирования строки таблицы.
@@ -126,12 +118,11 @@ class ExpenseView(QtWidgets.QWidget):
             show_warning_dialog(message='Выберите не пустую строку для редактирования',
                                 title='Edit')
             return
-        pk = self.ls_pk[selected_row] 
+        pk = self.ls_pk[selected_row]
         expense_date = self.expense_table.item(selected_row, 0).text()
         amount = float(self.expense_table.item(selected_row, 1).text())
         comment = self.expense_table.item(selected_row, 3).text()
-        
-        data_row = {'pk':pk, 'amount':amount, 
+        data_row = {'pk':pk, 'amount':amount,
                     'expense_date':expense_date, 'comment':comment}
         dialog = ChangeExpenseDialog(cat_repo = self.cat_repo,
                                         title = 'Edit',
@@ -160,20 +151,20 @@ class ExpenseView(QtWidgets.QWidget):
                 elif change[0] == 'update':
                     self.exp_repo.update(change[1])
             self.changes = []
-    def is_row_empty(self, selected_rơw:int)->bool:
+    def is_row_empty(self, selected_row:int)->bool:
         """
         Проверяет, пуста ли строка таблицы.
         """
         for j in range(self.expense_table.columnCount()):
-            item = self.expense_table.item(selected_rơw, j)
+            item = self.expense_table.item(selected_row, j)
             if item is not None and item.text():
-                return False 
+                return False
         return True
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    cat_repo = SQLiteRepository('bookkeeper/view/new_database.db', Category)
-    exp_repo = SQLiteRepository('bookkeeper/view/new_database.db', Expense)
-    window = ExpenseView(cat_repo, exp_repo)
+    category_repo = SQLiteRepository('bookkeeper/view/new_database.db', Category)
+    expense_repo = SQLiteRepository('bookkeeper/view/new_database.db', Expense)
+    window = ExpenseView(category_repo, expense_repo)
     window.setWindowTitle('Category')
     window.resize(500,500)
     save_button = QtWidgets.QPushButton('Сохранить')

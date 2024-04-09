@@ -1,8 +1,11 @@
+"""
+Главное окно приложения.
+"""
 import sys
 from PySide6 import QtWidgets
 from bookkeeper.utils import h_widget_with_label
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
-from bookkeeper.view.category_view import (CategoryWindow, list_category_widget, 
+from bookkeeper.view.category_view import (CategoryWindow,
                                            get_categories)
 from bookkeeper.view.budget_view import BudgetView
 from bookkeeper.view.expense_view import ExpenseView
@@ -10,18 +13,17 @@ from bookkeeper.models.budget import Budget
 from bookkeeper.models.expense import Expense
 from bookkeeper.models.category import Category
 from bookkeeper.utils import show_warning_dialog
-
 class MainWindow(QtWidgets.QWidget):
     """
     Главное окно приложения.
     """
-    def __init__(self, 
-                 exp_repo:SQLiteRepository, 
-                 budget_repo:SQLiteRepository, 
-                 cat_repo: SQLiteRepository)->None:
+    def __init__(self,
+                 exp_repo:SQLiteRepository,
+                 budget_repo:SQLiteRepository,
+                 cat_repo: SQLiteRepository) ->None:
         super().__init__()
         self.layout = QtWidgets.QVBoxLayout()
-        self.expense_widget = ExpenseView(exp_repo= exp_repo, 
+        self.expense_widget = ExpenseView(exp_repo= exp_repo,
                                           cat_repo = cat_repo)
         self.cat_repo = cat_repo
         self.layout.addWidget(self.expense_widget)
@@ -36,9 +38,9 @@ class MainWindow(QtWidgets.QWidget):
         self.combobox = QtWidgets.QComboBox()
         self.combobox.addItems(self.ls_categories)
         self.layout.addLayout(h_widget_with_label('Категории', self.combobox))
-        self.save_button = QtWidgets.QPushButton('Save')
-        self.save_button.clicked.connect(self.save_button_click)
-        self.layout.addWidget(self.save_button)
+        save_button = QtWidgets.QPushButton('Save')
+        save_button.clicked.connect(self.save_button_click)
+        self.layout.addWidget(save_button)
         self.setLayout(self.layout)
         self.main_changes = []
     def update_budget_table(self):
@@ -68,19 +70,24 @@ class MainWindow(QtWidgets.QWidget):
             self.budget_widget.save_button_click()
             show_warning_dialog(message='Успешно сохранить', title= 'Сохранение')
     def update_expense_table(self):
+        """
+        Обновляет таблицу расходов
+        """
         self.expense_widget.build_expense_widget()
     def update_category_list(self):
+        """
+        Обновляет список категорий
+        """
         self.ls_categories = get_categories(self.cat_repo).keys()
         self.combobox.addItems(self.ls_categories)
 budget_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Budget)
-exp_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Expense)
-cat_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Category)
-exp_repo.create_table_db()
+expense_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Expense)
+category_repo = SQLiteRepository(db_file = 'bookkeeper/view/new_database.db', cls = Category)
+expense_repo.create_table_db()
 budget_repo.create_table_db()
-cat_repo.create_table_db()
-
+category_repo.create_table_db()
 app = QtWidgets.QApplication(sys.argv)
-window = MainWindow(budget_repo=budget_repo, exp_repo=exp_repo, cat_repo=cat_repo)
+window = MainWindow(budget_repo=budget_repo, exp_repo=expense_repo, cat_repo=category_repo)
 window.setWindowTitle('The Bookkeeper')
 window.resize(500, 800)
 window.show()
