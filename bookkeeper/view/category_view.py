@@ -1,6 +1,9 @@
-from PySide6 import QtWidgets
+"""
+Виджет для показа списка категорий
+"""
 import sys
-from typing import Optional, List
+from typing import Optional
+from PySide6 import QtWidgets
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
 from bookkeeper.utils import show_warning_dialog, h_widget_with_label
 from bookkeeper.models.category import Category
@@ -12,7 +15,8 @@ class AddCategoryDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle('Добавить категорию')
         self.input_field = QtWidgets.QLineEdit()
-        self.ok_button = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        self.ok_button = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | \
+            QtWidgets.QDialogButtonBox.Cancel)
         self.ok_button.accepted.connect(self.accept)
         self.ok_button.rejected.connect(self.reject)
         layout = QtWidgets.QVBoxLayout()
@@ -26,12 +30,13 @@ class EditCategoryDialog(QtWidgets.QDialog):
     """
     Модальное окно для редактирования существующей категории.
     """
-    def __init__(self, current_name:str, 
+    def __init__(self, current_name:str,
                  parent: Optional[QtWidgets.QWidget]= None)->None:
         super().__init__(parent)
         self.setWindowTitle('edit category')
         self.input_field = QtWidgets.QLineEdit(current_name)
-        self.ok_button = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
+        self.ok_button = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok | \
+            QtWidgets.QDialogButtonBox.Cancel)
         self.ok_button.accepted.connect(self.accept)
         self.ok_button.rejected.connect(self.reject)
         layout = QtWidgets.QVBoxLayout()
@@ -42,34 +47,31 @@ class EditCategoryDialog(QtWidgets.QDialog):
         """Возвращает название новой категории."""
         return self.input_field.text()
 class DeleteConfirmationDialog(QtWidgets.QDialog):
+    """
+    Диалог для подтверждения удаления.
+    """
     def __init__(self, parent=None):
         super(DeleteConfirmationDialog, self).__init__(parent)
-
         self.setWindowTitle("Delete Confirmation")
-
         layout = QtWidgets.QVBoxLayout()
-
         self.label = QtWidgets.QLabel("What do you want to delete?")
         layout.addWidget(self.label)
-
         self.delete_all_children_button = QtWidgets.QPushButton("Delete All Children")
         self.delete_all_children_button.clicked.connect(self.delete_all_children)
         layout.addWidget(self.delete_all_children_button)
-
         self.delete_only_this_button = QtWidgets.QPushButton("Delete Only This")
         self.delete_only_this_button.clicked.connect(self.delete_only_this)
         layout.addWidget(self.delete_only_this_button)
-
         self.setLayout(layout)
-
+        self.result = None
     def delete_all_children(self):
+        """Удалить все дочерние категории."""
         self.result = "Delete All Children"
         self.accept()
-
     def delete_only_this(self):
+        """Удалить только эту категорию."""
         self.result = "Delete Only This"
         self.accept()
-
 class CategoryWindow(QtWidgets.QWidget):
     """Окно для управления категориями."""
     def __init__(self, cat_repo: SQLiteRepository[Category])->None:
@@ -128,7 +130,8 @@ class CategoryWindow(QtWidgets.QWidget):
             dialog = EditCategoryDialog(current_name, self)
             if dialog.exec() == QtWidgets.QDialog.Accepted:
                 new_category_name = dialog.get_new_category_name()
-                if new_category_name != current_name and self.check_new_name(new_category_name):
+                if new_category_name != current_name and \
+                    self.check_new_name(new_category_name):
                     selected_item.setText(0, new_category_name)
                     selected_cat.name = new_category_name
                     self.dict_categories[selected_cat.pk] = selected_cat
@@ -183,13 +186,12 @@ class CategoryWindow(QtWidgets.QWidget):
                 show_warning_dialog(message='Название не может быть пустым',
                                     title = 'Add Category to Root')
     def delete_button_click(self)->None:
-        """ 
+        """
         Диалог для удаления
         """
         selected_item = self.tree.currentItem()
         if selected_item is None:
             return
-
         dialog = DeleteConfirmationDialog(self)
         if dialog.exec_():
             result = dialog.result
@@ -211,8 +213,6 @@ class CategoryWindow(QtWidgets.QWidget):
                 else:
                     index = self.tree.indexOfTopLevelItem(selected_item)
                     self.tree.takeTopLevelItem(index)
-    
-    
     def save_button_click(self):
         """
         Save category
@@ -234,12 +234,18 @@ class CategoryWindow(QtWidgets.QWidget):
             if cat.name == name:
                 return cat
         return 0
-    def check_new_name(self, name:str)-> bool:
+    def check_new_name(self, name: str)-> bool:
+        """
+        Проверить, существует ли название в категориях
+        """
         for cat in self.dict_categories.values():
             if cat.name == name:
                 return False
         return True
     def get_all_children(self, item):
+        """
+        Получить все дочерние элементы в QTreeWidgetItem
+        """
         children = []
         child_count = item.childCount()
         for i in range(child_count):
@@ -249,14 +255,14 @@ class CategoryWindow(QtWidgets.QWidget):
         return children
 def get_categories(cat_repo: SQLiteRepository[Category])->dict[str: int]:
     """
-    Получить словарь из ключа и названия 
+    Получить словарь из ключа и названия
     """
     categories = cat_repo.get_all()
     dict_categories = {}
     for category in categories:
         dict_categories[category.name] = category.pk
     return dict_categories
-def list_category_widget(cat_repo: SQLiteRepository[Category])-> QtWidgets.QHBoxLayout:
+def list_category_widget(cat_repo: SQLiteRepository[Category]) -> QtWidgets.QHBoxLayout:
         """
         Отображает список категорий в виджет ComboBox
         """
@@ -274,3 +280,4 @@ if __name__ == '__main__':
     window.setLayout(window.layout)
     window.show()
     sys.exit(app.exec())
+    

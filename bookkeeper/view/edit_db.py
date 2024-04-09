@@ -38,11 +38,12 @@ def create_table_db(db_file):
 import sqlite3
 
 # Connect to the database
-conn = sqlite3.connect('bookkeeper/view/new_database.db')
+conn = sqlite3.connect('tests/test.db')
 cursor = conn.cursor()
 
 # Execute the DROP TABLE statement to delete the table
-cursor.execute("DROP TABLE IF EXISTS category")
+# cursor.execute("DROP TABLE users")
+cursor.execute("CREATE TABLE IF NOT EXISTS users (pk INTEGER PRIMARY KEY, name STRING, value INTEGER)")
 
 # Commit the transaction
 conn.commit()
