@@ -8,7 +8,6 @@ from bookkeeper.repository.abstract_repository import AbstractRepository, T
 from bookkeeper.models.budget import Budget
 from bookkeeper.models.category import Category
 from bookkeeper.models.expense import Expense
-
 class SQLiteRepository(AbstractRepository[T]):
     """
     Репозиторий для работы с БД SQLite
@@ -46,7 +45,6 @@ class SQLiteRepository(AbstractRepository[T]):
         obj_dict['pk'] = pk
         obj = class_name(self.table_name.capitalize(),obj_dict)
         return obj
-
     def get_all(self, where: dict[str, Any]|None = None,
                 value_range = False)->list[T]:
         with sqlite3.connect(self.db_file) as conn:

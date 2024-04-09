@@ -8,7 +8,17 @@ from bookkeeper.repository.memory_repository import MemoryRepository
 @pytest.fixture
 def temp_db():
     # Create an in-memory database for testing
-    conn = sqlite3.connect(':memory:')
+    conn = sqlite3.connect(":memory:")
+    cursor = conn.cursor()
+    
+    # Create your table(s) here
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cutom (
+            pk INTEGER PRIMARY KEY,
+            value1 TEXT,
+            value2 TEXT
+        )
+    """)
     yield conn
     conn.close()
 
@@ -26,6 +36,7 @@ def custom_class():
 def test_cannot_add_with_pk(repo, custom_class):
     obj = custom_class()
     obj.pk = 1
+    print(obj)
     with pytest.raises(ValueError):
         repo.add(obj)
 
