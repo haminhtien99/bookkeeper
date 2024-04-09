@@ -41,6 +41,35 @@ class EditCategoryDialog(QtWidgets.QDialog):
     def get_new_category_name(self)->str:
         """Возвращает название новой категории."""
         return self.input_field.text()
+class DeleteConfirmationDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super(DeleteConfirmationDialog, self).__init__(parent)
+
+        self.setWindowTitle("Delete Confirmation")
+
+        layout = QtWidgets.QVBoxLayout()
+
+        self.label = QtWidgets.QLabel("What do you want to delete?")
+        layout.addWidget(self.label)
+
+        self.delete_all_children_button = QtWidgets.QPushButton("Delete All Children")
+        self.delete_all_children_button.clicked.connect(self.delete_all_children)
+        layout.addWidget(self.delete_all_children_button)
+
+        self.delete_only_this_button = QtWidgets.QPushButton("Delete Only This")
+        self.delete_only_this_button.clicked.connect(self.delete_only_this)
+        layout.addWidget(self.delete_only_this_button)
+
+        self.setLayout(layout)
+
+    def delete_all_children(self):
+        self.result = "Delete All Children"
+        self.accept()
+
+    def delete_only_this(self):
+        self.result = "Delete Only This"
+        self.accept()
+
 class CategoryWindow(QtWidgets.QWidget):
     """Окно для управления категориями."""
     def __init__(self, cat_repo: SQLiteRepository[Category])->None:
@@ -155,28 +184,35 @@ class CategoryWindow(QtWidgets.QWidget):
                                     title = 'Add Category to Root')
     def delete_button_click(self)->None:
         """ 
-        Удалить выбранную категорию и все под-категории        
+        Диалог для удаления
         """
         selected_item = self.tree.currentItem()
-        if selected_item is not None:
-            selected_name = selected_item.text(0)
-            selected_cat = self.get_category_by_name(selected_name)
-            selected_items = self.tree.selectedItems()
-            if selected_items:
-                selected_item = selected_items[0]  # assuming only one item is selected
-                all_children = self.get_all_children(selected_item)
-                child_names = [child.text(0) for child in all_children]
-                self.tree.parent().removeChild(selected_item)
-                self.changes.append(('delete', selected_cat.pk))
-                self.dict_categories.pop(selected_cat.pk)
-                for name in child_names:
-                    cat = self.get_category_by_name(name)
-                    self.changes.append(('delete', cat.pk))
-                    self.dict_categories.pop(cat.pk)
-                show_warning_dialog(message='Удалено',
-                                    title = 'Delete Category')
-            else:
-                show_warning_dialog('No selected items')
+        if selected_item is None:
+            return
+
+        dialog = DeleteConfirmationDialog(self)
+        if dialog.exec_():
+            result = dialog.result
+            if result == "Delete All Children":
+                parent = selected_item.parent()
+                if parent is not None:
+                    parent.removeChild(selected_item)
+                else:
+                    index = self.tree.indexOfTopLevelItem(selected_item)
+                    self.tree.takeTopLevelItem(index)
+            elif result == "Delete Only This":
+                parent = selected_item.parent()
+                if parent is not None:
+                    parent.removeChild(selected_item)
+                    # Move children to the parent of the selected item
+                    while selected_item.childCount() > 0:
+                        child = selected_item.takeChild(0)
+                        parent.addChild(child)
+                else:
+                    index = self.tree.indexOfTopLevelItem(selected_item)
+                    self.tree.takeTopLevelItem(index)
+    
+    
     def save_button_click(self):
         """
         Save category
