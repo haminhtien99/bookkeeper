@@ -84,14 +84,6 @@ class Category:
         for cat in repo.get_all():
             subcats[cat.parent].append(cat)
         return get_children(subcats, self.pk)
-    def get_children_first_node(self,
-                                repo: AbstractRepository['Category']
-                                ) -> List['Category']:
-        """
-        Получить все подкатегории из иерархии, т.е. непосредственные
-        подкатегории данной
-        """
-        return repo.get_all(where={'parent': self.pk})
     @classmethod
     def create_from_tree(
             cls,

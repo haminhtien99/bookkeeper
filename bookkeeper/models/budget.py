@@ -11,7 +11,7 @@ class Budget:
     week - бюджет на неделю
     month - бюджет на месяц
     """
-    day: float
-    week: float
-    month: float
+    day: float = 0.
+    week: float = 0.
+    month: float = 0.
     pk: int = 0

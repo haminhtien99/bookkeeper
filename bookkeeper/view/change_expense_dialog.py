@@ -1,43 +1,42 @@
 import datetime
 from PySide6 import QtWidgets
-from bookkeeper.repository.sqlite_repository import SQLiteRepository
-from bookkeeper.utils import show_warning_dialog, h_widget_with_label
-from bookkeeper.view.category_view import get_categories
+from bookkeeper.repository.memory_repository import MemoryRepository
+from bookkeeper.utils import show_warning_dialog, h_widget_with_label, get_categories
 from bookkeeper.models.expense import Expense
+from bookkeeper.models.category import Category
 class ChangeExpenseDialog(QtWidgets.QDialog):
     """
     Диалог для добавлеяния или изменения расхода
     """
     def __init__(self,
-                 cat_repo: SQLiteRepository,
+                 cat_repo: MemoryRepository[Category],
                  title:str,
-                 data_row: dict[str, str|float|int]| None = None )-> None:
+                 exp: Expense | None = None )-> None:
         super().__init__()
         self.setWindowTitle(title)
-        self.data_row = data_row
-        self.layout = QtWidgets.QVBoxLayout()
+        self.exp = exp
+        layout = QtWidgets.QVBoxLayout()
         date_hbox = self.hbox_of_date()
-        self.layout.addLayout(date_hbox)
+        layout.addLayout(date_hbox)
         self.amount_line_edit = QtWidgets.QLineEdit()
-        if self.data_row is not None:
-            self.amount_line_edit.setText(str(self.data_row['amount']))
-        self.layout.addLayout(h_widget_with_label('Сумма',self.amount_line_edit))
+        if self.exp is not None: # edit mode
+            self.amount_line_edit.setText(str(self.exp.amount))
+        layout.addLayout(h_widget_with_label('Сумма',self.amount_line_edit))
         self.cat_repo = cat_repo
         self.categories = get_categories(self.cat_repo)
         self.combobox = QtWidgets.QComboBox()
         self.combobox.addItems(self.categories)
-        self.layout.addLayout(h_widget_with_label('Категории', self.combobox))
+        layout.addLayout(h_widget_with_label('Категории', self.combobox))
         self.comment_line_edit = QtWidgets.QLineEdit()
-        if self.data_row is not None:
-            self.comment_line_edit.setText(self.data_row['comment'])
-        self.layout.addLayout(h_widget_with_label('Комметарий',self.comment_line_edit))
+        if self.exp is not None: # edit mode
+            self.comment_line_edit.setText(self.exp.comment)
+        layout.addLayout(h_widget_with_label('Комметарий',self.comment_line_edit))
         apply_change_button = QtWidgets.QPushButton('Apply')
         apply_change_button.clicked.connect(self.apply_change)
-        self.layout.addWidget(apply_change_button)
-        return_button = QtWidgets.QPushButton('Cancel', clicked=self.reject)
-        self.layout.addWidget(return_button)
-        self.setLayout(self.layout)
-        self.change = None # Изменение
+        layout.addWidget(apply_change_button)
+        cancel_button = QtWidgets.QPushButton('Cancel', clicked=self.reject)
+        layout.addWidget(cancel_button)
+        self.setLayout(layout)
     def hbox_of_date(self)-> QtWidgets.QHBoxLayout:
         """
         Виджет для получения даты расхода
@@ -45,8 +44,8 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         date_hbox = QtWidgets.QHBoxLayout()
         date_hbox.addWidget(QtWidgets.QLabel('Дата расхода(YYYY-MM-DD)'))
         self.expense_date_line_edit = QtWidgets.QLineEdit()
-        if self.data_row is not None:
-            self.expense_date_line_edit.setText(self.data_row['expense_date'])
+        if self.exp is not None:
+            self.expense_date_line_edit.setText(self.exp.expense_date)
         date_hbox.addWidget(self.expense_date_line_edit)
         self.auto_fill_date_button = QtWidgets.QPushButton('Автозаполнить')
         self.auto_fill_date_button.clicked.connect(self.auto_fill_date)
@@ -75,11 +74,9 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
                                       category = cat,
                                       added_date = added_date,
                                       expense_date = expense_date)
-                if self.data_row is not None:
-                    new_expense.pk = self.data_row['pk']
-                    self.change = ('update', new_expense)
-                else:
-                    self.change = ('add', new_expense)
+                if self.exp is not None:
+                    new_expense.pk = self.exp.pk
+                self.exp = new_expense
                 show_warning_dialog(message='Успешно!!', title='Edit')
                 self.accept()
         else:

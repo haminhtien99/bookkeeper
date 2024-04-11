@@ -28,9 +28,17 @@ class MemoryRepository(AbstractRepository[T]):
     def get(self, pk: int) -> T | None:
         return self._container.get(pk)
 
-    def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
+    def get_all(self, where: dict[str, Any] | None = None,
+                value_range = False) -> list[T]:
         if where is None:
             return list(self._container.values())
+        elif value_range is True:
+            result = []
+            attr = next(iter(where.keys()))
+            for obj in self._container.values():
+                if where[attr][0] <= getattr(obj, attr) <= where[attr][1]:
+                    result.append(obj)
+            return result
         return [obj for obj in self._container.values()
                 if all(getattr(obj, attr) == value for attr, value in where.items())]
 

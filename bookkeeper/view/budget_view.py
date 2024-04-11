@@ -3,30 +3,32 @@
 """
 import sys
 from PySide6 import QtWidgets
-from bookkeeper.utils import (v_widget_with_label, h_widget_with_label,
+from bookkeeper.utils import (v_widget_with_label, create_table_db,
                               show_warning_dialog, get_day_week_month)
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
+from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.models.budget import Budget
 from bookkeeper.models.expense import Expense
+from bookkeeper.view.set_budget_dialog import SetBudgetDialog
 class BudgetView(QtWidgets.QWidget):
     """
     Виджет отображает бюджет в главном окне
     """
-    def __init__(self, budget_repo: SQLiteRepository[Budget] | None = None,
-                 exp_repo: SQLiteRepository[Expense] | None = None) -> None:
+    def __init__(self,
+                 budget: Budget,
+                 exp_mem_repo: MemoryRepository[Expense]) -> None:
         super().__init__()
-        self.budget_repo = budget_repo
+        self.budget = budget
         self.layout = QtWidgets.QVBoxLayout()
         self.budget_table = QtWidgets.QTableWidget(2, 3)
-        self.show_budget_widget()
-        self.from_expense_repo(exp_repo)
+        self.show_budget_widget(exp_mem_repo)
         self.layout.addLayout(v_widget_with_label('Бюджет', self.budget_table))
         self.set_budget_button = QtWidgets.QPushButton('Задать бюджет')
         self.set_budget_button.clicked.connect(self.set_budget_dialog)
         self.layout.addWidget(self.set_budget_button)
         self.setLayout(self.layout)
-        self.change_budget = None
-    def show_budget_widget(self) -> None:
+    def show_budget_widget(self,
+                           exp_mem_repo: MemoryRepository[Expense]) -> None:
         """
         Показывает виджет с бюджетом
         """
@@ -35,48 +37,25 @@ class BudgetView(QtWidgets.QWidget):
         self.budget_table.setHorizontalHeaderLabels(['Сумма', 'Бюджет'])
         self.budget_table.setVerticalHeaderLabels(['День', 'Неделя', 'Месяц'])
         self.budget_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
-        if self.budget_repo is None or self.budget_repo.table_exists() is False:
-            self.budget_table.setItem(0, 1, QtWidgets.QTableWidgetItem('0'))
-            self.budget_table.setItem(1, 1, QtWidgets.QTableWidgetItem('0'))
-            self.budget_table.setItem(2, 1, QtWidgets.QTableWidgetItem('0'))
-        else:
-            budget = self.budget_repo.get_all()
-            if len(budget) == 0:
-                self.budget_table.setItem(0, 1, QtWidgets.QTableWidgetItem('0'))
-                self.budget_table.setItem(1, 1, QtWidgets.QTableWidgetItem('0'))
-                self.budget_table.setItem(2, 1, QtWidgets.QTableWidgetItem('0'))
-            else:
-                budget = budget[0]
-                self.budget_table.setItem(0, 1,
-                                          QtWidgets.QTableWidgetItem(str(budget.day)))
-                self.budget_table.setItem(1, 1,
-                                          QtWidgets.QTableWidgetItem(str(budget.week)))
-                self.budget_table.setItem(2, 1,
-                                          QtWidgets.QTableWidgetItem(str(budget.month)))
-    def set_budget_dialog(self) -> None:
-        """
-        Открыть диалог для задания бюджета
-        """
-        month = self.budget_table.item(2, 1).text()
-        weeek = self.budget_table.item(0, 1).text()
-        day = self.budget_table.item(0, 1).text()
-        dialog = SetBudgetDialog(budget_repo=self.budget_repo,
-                                 budget_data={'month': month, 'week': weeek, 'day': day})
-        dialog.exec()
-        if dialog.budget is not None:
-            new_budget = dialog.budget
-            self.budget_table.setItem(0, 1,
-                                      QtWidgets.QTableWidgetItem(str(new_budget.day)))
-            self.budget_table.setItem(1, 1,
-                                      QtWidgets.QTableWidgetItem(str(new_budget.week)))
-            self.budget_table.setItem(2, 1,
-                                      QtWidgets.QTableWidgetItem(str(new_budget.month)))
-            self.change_budget = ('update-budget', dialog.budget)
-    def from_expense_repo(self, exp_repo: SQLiteRepository | None = None) -> None:
+        self.update_budget_column()
+        self.update_expense_column(exp_mem_repo=exp_mem_repo)
+        # self.check_warning_budget()
+    def update_budget_column(self):
+        """Показать столбец бюджета таблицы Бюджета"""
+        self.budget_table.setItem(0,
+                                  1,
+                                  QtWidgets.QTableWidgetItem(str(self.budget.day)))
+        self.budget_table.setItem(1,
+                                  1,
+                                  QtWidgets.QTableWidgetItem(str(self.budget.week)))
+        self.budget_table.setItem(2,
+                                  1,
+                                  QtWidgets.QTableWidgetItem(str(self.budget.month)))
+    def update_expense_column(self, exp_mem_repo: MemoryRepository[Expense]):
         """
         Получить расход за день, неделю, месяц из репозитории расходов
         """
-        if exp_repo is None or exp_repo.table_exists() is False:
+        if len(exp_mem_repo.get_all()) == 0:
             self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem('0'))
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem('0'))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem('0'))
@@ -85,10 +64,10 @@ class BudgetView(QtWidgets.QWidget):
             today = day_week_month['today']
             this_week = day_week_month['this_week']
             this_month = day_week_month['this_month']
-            exps_day = exp_repo.get_all({'expense_date': today})
-            exps_week = exp_repo.get_all({'expense_date': this_week},
+            exps_day = exp_mem_repo.get_all({'expense_date': today})
+            exps_week = exp_mem_repo.get_all({'expense_date': this_week},
                                          value_range=True)
-            exps_month = exp_repo.get_all({'expense_date': this_month},
+            exps_month = exp_mem_repo.get_all({'expense_date': this_month},
                                           value_range=True)
             day_sum = 0.
             for exp in exps_day:
@@ -102,59 +81,6 @@ class BudgetView(QtWidgets.QWidget):
             self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(day_sum)))
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem(str(week_sum)))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem(str(month_sum)))
-    def from_expense_widget_table(self, exp_table: QtWidgets.QTableWidget) -> None:
-        """
-        Получить расход за день, неделю, месяц из таблицы расходов
-        """
-        day_week_month = get_day_week_month()
-        today = day_week_month['today']
-        this_week = day_week_month['this_week']
-        this_month = day_week_month['this_month']
-        day_sum = 0.
-        for row in range(exp_table.rowCount()):
-            item_date = exp_table.item(row, 0)
-            item_amount = exp_table.item(row, 1)
-            if item_date is not None and item_amount is not None \
-                and item_date.text() and item_amount.text():
-                item_date = item_date.text()
-                if today == item_date:
-                    day_sum += float(exp_table.item(row, 1).text())
-        week_sum = 0.
-        for row in range(exp_table.rowCount()):
-            item_date = exp_table.item(row, 0)
-            item_amount = exp_table.item(row, 1)
-            if item_date is not None and item_amount is not None \
-                and item_date.text() and item_amount.text():
-                item_date = item_date.text()
-                if this_week[0] <= item_date <= this_week[1]:
-                    week_sum += float(exp_table.item(row, 1).text())
-        month_sum = 0.
-        for row in range(exp_table.rowCount()):
-            item_date = exp_table.item(row, 0)
-            item_amount = exp_table.item(row, 1)
-            if item_date is not None and item_amount is not None \
-                and item_date.text() and item_amount.text():
-                    item_date = item_date.text()
-                    if this_month[0] <= item_date <= this_month[1]:
-                        month_sum += float(exp_table.item(row, 1).text())
-        self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(day_sum)))
-        self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem(str(week_sum)))
-        self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem(str(month_sum)))
-    def save_button_click(self):
-        """
-        Сохранить бюджет
-        """
-        if self.change_budget is None:
-            show_warning_dialog(message='Нет изменения', title='Сохранение')
-        else:
-            if self.budget_repo.table_exists() is False:
-                self.budget_repo.create_table_db()
-            if len(self.budget_repo.get_all()) == 0:
-                self.budget_repo.add(self.change_budget[1])
-            else:
-                self.budget_repo.update(self.change_budget[1])
-            # show_warning_dialog(message='Успешно сохранить бюджет', title= 'Сохранение')
-            self.change_budget = None
     def check_warning_budget(self):
         """
         Вывести предупреждение о бюджете
@@ -171,93 +97,36 @@ class BudgetView(QtWidgets.QWidget):
             show_warning_dialog(message='Расход в течение недели превышает бюджета')
         if month_sum > month_budget:
             show_warning_dialog(message='Расход в течение месяца превышает бюджета')
-class SetBudgetDialog(QtWidgets.QDialog):
-    """
-    Виджет для задания бюджета
-    """
-    def __init__(self, budget_repo: SQLiteRepository[Budget],
-                 budget_data: dict[str, float] | None = None,
-                 )-> None:
-        super().__init__()
-        self.budget_repo = budget_repo
-        self.setWindowTitle('Задать бюджет')
-        self.setFixedSize(300, 350)
-        self.layout = QtWidgets.QVBoxLayout()
-        edit_budget_daily = QtWidgets.QLineEdit()
-        if budget_data is not None:
-            edit_budget_daily.setText(str(budget_data['day']))
-        self.layout.addLayout(h_widget_with_label('Бюджет на день ', edit_budget_daily))
-        edit_budget_weekly = QtWidgets.QLineEdit()
-        if budget_data is not None:
-            edit_budget_weekly.setText(str(budget_data['week']))
-        self.layout.addLayout( h_widget_with_label('Бюджет на неделю ', edit_budget_weekly))
-        edit_budget_monthly = QtWidgets.QLineEdit()
-        if budget_data is not None:
-            edit_budget_monthly.setText(str(budget_data['month']))
-        self.layout.addLayout(h_widget_with_label('Бюджет на месяц ', edit_budget_monthly))
-        self.data = {'month': edit_budget_monthly,
-                     'week': edit_budget_weekly,
-                     'day': edit_budget_daily}
-        self.apply_button = QtWidgets.QPushButton('Apply')
-        self.layout.addWidget(self.apply_button)
-        self.apply_button.clicked.connect(self.apply_button_click)
-        self.setLayout(self.layout)
-        self.budget = None
-    def apply_button_click(self)->None:
+    def set_budget_dialog(self) -> None:
         """
-        Проверяет введенные данные на корректность
+        Открыть диалог для задания бюджета
         """
-        if self.validate_data():
-            self.budget = Budget(pk = 1,
-                                month = self.budget_dict['month'],
-                                week= self.budget_dict['week'],
-                                day = self.budget_dict['day'])
-            show_warning_dialog(message = 'Успешно!!', title = 'Edit')
-            self.accept()
-    def validate_data(self):
-        """
-        Проверяет введенные данные на корректность
-        """
-        month = self.data['month'].text().strip()
-        week = self.data['week'].text().strip()
-        day = self.data['day'].text().strip()
-        try :
-            month = float(month)
-            week = float(week)
-            day = float(day)
-        except ValueError:
-            show_warning_dialog(message = 'Неверный тип данных',
-                                title = 'Set Budget')
-            return False
-        if month < 0 or week < 0 or day < 0:
-            show_warning_dialog(message ='Бюджет не может быть отрицательным',
-                                title = 'Set Budget')
-            return False
-        if day > week:
-            show_warning_dialog(message='Бюджет дня должен быть меньше Бюджета недели',
-                                title = 'Set Budget')
-            return False
-        if week > month:
-            show_warning_dialog(message='Бюджет недели должен быть меньше Бюджета месяца',
-                                title = 'Set Budget')
-            return False
-        self.budget_dict = {'week': week, 'month': month, 'day': day}
-        return True
+        dialog = SetBudgetDialog(self.budget)
+        dialog.exec()
+        if dialog.budget is not None:
+            self.budget = dialog.budget
+            self.update_budget_column()
 if __name__ == '__main__':
     """
     Run the budget window
     """
+    DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
-    examp_budget_repo = SQLiteRepository(db_file='bookkeeper/view/new_database.db',
-                                         cls=Budget)
-    examp_exp_repo = SQLiteRepository(db_file='bookkeeper/view/new_database.db',
-                                      cls=Expense)
-    window = BudgetView(budget_repo=examp_budget_repo, exp_repo=examp_exp_repo)
+    budget_sql_repo = SQLiteRepository(db_file = DB_FILE, cls=Budget)
+    expense_sql_repo = SQLiteRepository(db_file = DB_FILE, cls=Expense)
+    create_table_db(db_file=DB_FILE, cls=Budget)
+    create_table_db(db_file=DB_FILE, cls=Expense)
+    expense_mem_repo = MemoryRepository[Expense]()
+    budget = Budget(day=0., week=0., month=0.)
+    if len(budget_sql_repo.get_all()) > 0:
+        budget = budget_sql_repo.get(1)
+    if len(expense_sql_repo.get_all()) > 0:
+        for exp in expense_sql_repo.get_all():
+            exp.pk = 0
+            expense_mem_repo.add(exp)
+    window = BudgetView(budget=budget, exp_mem_repo=expense_mem_repo)
     window.setWindowTitle('Set Budget')
     window.resize(500, 500)
-    save_button = QtWidgets.QPushButton('Save')
-    save_button.clicked.connect(window.save_button_click)
-    window.layout.addWidget(save_button)
     window.setLayout(window.layout)
     window.show()
     sys.exit(app.exec())

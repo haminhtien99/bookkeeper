@@ -2,29 +2,39 @@ import pytest
 import sqlite3
 import os
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
-from bookkeeper.repository.memory_repository import MemoryRepository
-
-@pytest.fixture
-def temp_db():
-    # Create an in-memory database for testing
-    conn = sqlite3.connect(':memory:')
-    yield conn
+def create_db():
+    conn = sqlite3.connect('tests/test.db')
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE users")
+    cursor.execute("CREATE TABLE IF NOT EXISTS users (pk INTEGER PRIMARY KEY, name STRING, value INTEGER)")
+    conn.commit()
     conn.close()
-
-@pytest.fixture
-def repo(custom_class):
-    return SQLiteRepository(':memory:', custom_class)
-@pytest.fixture
-def custom_class():
-    class Custom:
-        pk: int = 0
-        value1: Any = ''
-        value2: Any = ''
-    return Custom
-
-def test_cannot_add_with_pk(repo, custom_class):
-    obj = custom_class()
-    obj.pk = 1
+    
+class Users:
+    name: str = ''
+    value: int = 0
+    pk: int = 0
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+    def __eq__(self, other):
+        return self.pk == other.pk and self.name == other.name and self.value == other.value
+create_db()
+test_db = "tests/test.db"
+repo = SQLiteRepository(test_db, Users)
+def test_add():
+    obj = Users(pk=1, name="Test", value=100)
+    pk = repo.add(obj)
+    assert pk == 1
+def test_delete():
+    with pytest.raises(ValueError):
+        repo.delete(0)
+def test_update():
+    obj = Users(pk = 0)
+    with  pytest.raises(ValueError):
+        repo.update(obj)
+def test_get():
+    pk = 100
     with pytest.raises(ValueError):
         repo.get(pk)
 def test_get_all():
