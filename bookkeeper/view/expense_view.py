@@ -3,6 +3,7 @@
 """
 import sys
 from PySide6 import QtWidgets
+from typing import List
 from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
 from bookkeeper.utils import show_warning_dialog, create_table_db
@@ -76,14 +77,10 @@ class ExpenseView(QtWidgets.QWidget):
             return
         if selected_row >= 0:
             self.expense_table.removeRow(selected_row)
-            # Update self.exp_mem_repo
-            len_exp_repo = len(self.exp_mem_repo.get_all())
-            if selected_row > len_exp_repo - 1:
-                for pk in range(selected_row, len_exp_repo):
-                    next_exp = self.exp_mem_repo.get(pk+1)
-                    next_exp.pk -= 1 # change next_exp to current one
-                    self.exp_mem_repo.update(next_exp)
-            self.exp_mem_repo.delete(pk = len_exp_repo)
+            for i, exp in enumerate(self.exp_mem_repo.get_all()):
+                if i == selected_row:
+                    self.exp_mem_repo.delete(pk=exp.pk)
+                    break
             show_warning_dialog(message='Удалена')
         else:
             show_warning_dialog(message='В таблице нет строки', title='Delete')
@@ -137,17 +134,18 @@ class ExpenseView(QtWidgets.QWidget):
             if item is not None and item.text():
                 return False
         return True
-    def update_from_category(self, pk_cat_deleted: int):
+    def update_from_category(self, pk_cat_deleted: List[int]):
         """
         Обновляет таблицу расходов после обновления репозитории категорий
         """
-        for exp in self.exp_mem_repo.get_all():
-            if exp.category == pk_cat_deleted:
-                self.expense_table.removeRow(exp.pk - 1)
-                self.exp_mem_repo.delete(pk = exp.pk)
-            if exp.category > pk_cat_deleted:
-                exp.category -= 1
-                self.exp_mem_repo.update(exp)
+        for i, exp in enumerate(self.exp_mem_repo.get_all()):
+            for pk_del in pk_cat_deleted:
+                if exp.category == pk_del:
+                    self.expense_table.removeRow(i)
+                    self.exp_mem_repo.delete(pk = exp.pk)
+                if exp.category > pk_del:
+                    exp.category -= 1
+                    self.exp_mem_repo.update(exp)
 if __name__ == '__main__':
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
