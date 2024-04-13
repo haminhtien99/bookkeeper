@@ -3,6 +3,7 @@
 """
 import sys
 from PySide6 import QtWidgets
+from PySide6 import QtCore
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
 from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.utils import show_warning_dialog, create_table_db
@@ -12,6 +13,7 @@ from bookkeeper.view.category_dialogs import (AddCategoryDialog,
                                               DeleteConfirmationDialog)
 class CategoryWindow(QtWidgets.QWidget):
     """Окно для управления категориями."""
+    categoryEdited = QtCore.Signal()
     def __init__(self, cat_mem_repo: MemoryRepository[Category]) -> None:
         super().__init__()
         self.setWindowTitle('Категории')
@@ -37,11 +39,11 @@ class CategoryWindow(QtWidgets.QWidget):
         self.layout.addWidget(delete_button)
         self.setLayout(self.layout)
         self.deleted_cat = []
-    def build_tree(self)->None:
+    def build_tree(self) -> None:
         """ Дерево категорий """
         self.tree.clear()
         top_categories = self.cat_mem_repo.get_all(where={'parent':None})
-        def build(parent_item:QtWidgets.QTreeWidgetItem, category:Category):
+        def build(parent_item: QtWidgets.QTreeWidgetItem, category: Category):
             """Дерево категорий первого уровня"""
             category_item = QtWidgets.QTreeWidgetItem(parent_item, [category.name])
             category_children = self.cat_mem_repo.get_all(where={'parent':category.pk})
@@ -49,15 +51,15 @@ class CategoryWindow(QtWidgets.QWidget):
                 build(category_item, sub_category)
         for top_cat in top_categories:
             build(self.tree, top_cat)
-    def edit_button_click(self)-> None:
+    def edit_button_click(self) -> None:
         """Отображает диалог для редактирования существующей категории."""
         selected_item = self.tree.currentItem()
         if selected_item is not None:
             current_name = selected_item.text(0)
             selected_cat = self.cat_mem_repo.get_all(where={'name':current_name})[0]
-            dialog = EditCategoryDialog(current_name, self)
-            if dialog.exec() == QtWidgets.QDialog.Accepted:
-                new_category_name = dialog.get_new_category_name()
+            edit_dialog = EditCategoryDialog(current_name, self)
+            if edit_dialog.exec() == QtWidgets.QDialog.Accepted:
+                new_category_name = edit_dialog.get_new_category_name()
                 if new_category_name == current_name:
                     show_warning_dialog(message=' Нет изменений',
                                         title = 'Update category')
@@ -68,7 +70,8 @@ class CategoryWindow(QtWidgets.QWidget):
                     selected_item.setText(0, new_category_name)
                     selected_cat.name = new_category_name
                     self.cat_mem_repo.update(selected_cat)
-    def add_button_click(self)->None:
+                    self.categoryEdited.emit()
+    def add_button_click(self) -> None:
         """Отображает диалог для добавления новой под-категории."""
         selected_item = self.tree.currentItem()
         if selected_item is not None:
@@ -85,38 +88,40 @@ class CategoryWindow(QtWidgets.QWidget):
                         category = Category(name = sub_category_name,
                                             parent = selected_cat.pk)
                         self.cat_mem_repo.add(category)
+                        self.categoryEdited.emit()
                     else:
                         show_warning_dialog(message='Название существовал',
                                             title = 'Add Category')
                 else:
                     show_warning_dialog(message='Название не может быть пустым',
                                     title = 'Add Category')
-    def add_button_root_click(self)-> None:
+    def add_button_root_click(self) -> None:
         """Отображает диалог для добавления новой категории первого уровня."""
         dialog = AddCategoryDialog(self)
         if dialog.exec() == QtWidgets.QDialog.Accepted:
             sub_category_name = dialog.get_category_name()
             if sub_category_name.strip():
                 if self.check_new_name(sub_category_name):
-                    item = QtWidgets.QTreeWidgetItem(self.tree)
-                    item.setText(0,sub_category_name)
+                    new_item = QtWidgets.QTreeWidgetItem(self.tree)
+                    new_item.setText(0, sub_category_name)
+                    self.tree.insertTopLevelItem(0, new_item)
                     category = Category(name = sub_category_name,
                                         parent = None)
                     self.cat_mem_repo.add(category)
+                    self.categoryEdited.emit()
                 else:
                     show_warning_dialog(message='Название существовал',
                                         title = 'Add Category to Root')
             else:
                 show_warning_dialog(message='Название не может быть пустым',
                                     title = 'Add Category to Root')
-    def delete_button_click(self) ->None:
+    def delete_button_click(self) -> None:
         """
         Диалог для удаления
         -----
-        Если ветка не имеет дочерных узлов, удалить ее обычном способом,
-        pk следующих (и возможно, их ) категорий уменьшается на 1 единицу
+        Если ветка не имеет дочерных узлов, удалить ее обычном способом
         Если дочерный узел существует, есть два варианта: удалить или оставить их.
-        При удалении каждого узла, 
+        При удалении каждого узла,
         сохранить информацию self.deleted_cat для обнавления таблицы расхода
         """
         selected_item = self.tree.currentItem()
@@ -132,7 +137,10 @@ class CategoryWindow(QtWidgets.QWidget):
                 self.tree.takeTopLevelItem(index)
             selected_name = selected_item.text(0)
             selected_cat = self.cat_mem_repo.get_all(where={'name': selected_name})[0]
-            self.delele_cat(selected_cat)
+            self.deleted_cat = [selected_cat.pk]
+            self.cat_mem_repo.delete(selected_cat.pk)
+            self.update_cat_mem_repo()
+            self.categoryEdited.emit()
             show_warning_dialog(message='Удалена')
             return
         dialog = DeleteConfirmationDialog(self)
@@ -142,29 +150,27 @@ class CategoryWindow(QtWidgets.QWidget):
             selected_cat = self.cat_mem_repo.get_all(where={'name': selected_name})[0]
             if result == 'Delete All Children':
                 parent = selected_item.parent()
-                ls_child_items = self.get_all_children(selected_item)
                 if parent is not None:
                     parent.removeChild(selected_item)
                 else:
                     index = self.tree.indexOfTopLevelItem(selected_item)
                     self.tree.takeTopLevelItem(index)
-                for item in ls_child_items:
-                    item_name = item.text(0)
-                    cat = self.cat_mem_repo.get_all(where={'name': item_name})[0]
-                    self.delele_cat(cat)
+                for cat in selected_cat.get_subcategories(self.cat_mem_repo):
+                    self.cat_mem_repo.delete(cat.pk)
+                    self.deleted_cat.append(cat.pk)
+                self.cat_mem_repo.delete(selected_cat.pk)
+                self.update_cat_mem_repo()
+                self.categoryEdited.emit()
             elif result == 'Delete Only This':
                 parent = selected_item.parent()
-                if parent is not None:
-                    parent.removeChild(selected_item)
-                    while selected_item.childCount() > 0:
-                        child = selected_item.takeChild(0)
-                        parent.addChild(child)
-                else:
-                    index = self.tree.indexOfTopLevelItem(selected_item)
-                    self.tree.takeTopLevelItem(index)
                 for child in self.cat_mem_repo.get_all(where={'parent':selected_cat.pk}):
                     child.parent = selected_cat.parent
-                self.delele_cat(selected_cat)
+                self.deleted_cat = [selected_cat.pk]
+                self.cat_mem_repo.delete(selected_cat.pk)
+                self.update_cat_mem_repo()
+                self.tree.clear()
+                self.build_tree()
+                self.categoryEdited.emit()
             show_warning_dialog(message='Удалена')
     def check_new_name(self, name: str) -> bool:
         """
@@ -174,32 +180,21 @@ class CategoryWindow(QtWidgets.QWidget):
             if cat.name == name:
                 return False
         return True
-    def delele_cat(self, selected_cat: Category) -> None:
+    def update_cat_mem_repo(self) -> None:
         """
-        Удалить категорию и обновить репозиторию категорий
+        Update MemoryRepository Category
+        после удаления некоторой категории в QTreewidget
         """
-        for cat in self.cat_mem_repo.get_all():
-            if cat.pk > selected_cat.pk:
-                cat.pk -= 1 
-                if cat.parent != None and selected_cat.parent != None:
-                    if cat.parent > selected_cat.parent:
-                        if cat.parent > 1:
-                            cat.parent -= 1
-                        else: cat.parent = None
-                self.cat_mem_repo.update(cat)
-        self.cat_mem_repo.delete(pk=len(self.cat_mem_repo.get_all()))
-        self.deleted_cat.append(selected_cat.pk)
-    def get_all_children(self, item):
-        """
-        Получить все дочерние элементы в QTreeWidgetItem
-        """
-        children = []
-        child_count = item.childCount()
-        for i in range(child_count):
-            child = item.child(i)
-            children.append(child)
-            children.extend(self.get_all_children(child))
-        return children
+        copy_cat_repo = self.cat_mem_repo
+        self.cat_mem_repo = MemoryRepository[Category]()
+        for cat in copy_cat_repo.get_all():
+            old_pk = cat.pk
+            cat.pk = 0
+            new_pk = self.cat_mem_repo.add(cat)
+            if old_pk != new_pk:
+                sub_cats = copy_cat_repo.get_all(where={'parent': old_pk})
+                for subcat in sub_cats:
+                    subcat.parent = new_pk
 if __name__ == '__main__':
     """
     Проверить работу CategoryWindow

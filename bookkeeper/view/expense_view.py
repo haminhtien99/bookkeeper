@@ -2,8 +2,7 @@
 Виджет для расхода
 """
 import sys
-from PySide6 import QtWidgets
-from typing import List
+from PySide6 import QtWidgets, QtCore
 from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
 from bookkeeper.utils import show_warning_dialog, create_table_db
@@ -14,6 +13,7 @@ class ExpenseView(QtWidgets.QWidget):
     """
     Виджет расхода в главном окне
     """
+    expenseEdited = QtCore.Signal() # Сигнал изменения данных расхода 
     def __init__(self,
                  exp_mem_repo: MemoryRepository[Expense],
                  cat_mem_repo: MemoryRepository[Category])->None:
@@ -81,6 +81,7 @@ class ExpenseView(QtWidgets.QWidget):
                 if i == selected_row:
                     self.exp_mem_repo.delete(pk=exp.pk)
                     break
+            self.expenseEdited.emit()
             show_warning_dialog(message='Удалена')
         else:
             show_warning_dialog(message='В таблице нет строки', title='Delete')
@@ -104,6 +105,7 @@ class ExpenseView(QtWidgets.QWidget):
             for j, value in enumerate(row):
                 self.expense_table.setItem(len_exp_repo - 1, j,
                                            QtWidgets.QTableWidgetItem(value))
+            self.expenseEdited.emit()
     def edit_expense_dialog(self)->None:
         """
         Открывает диалог редактирования строки таблицы.
@@ -125,6 +127,7 @@ class ExpenseView(QtWidgets.QWidget):
             for j, value in enumerate(row):
                 self.expense_table.setItem(selected_row, j, QtWidgets.QTableWidgetItem(value))
             self.exp_mem_repo.update(exp)
+            self.expenseEdited.emit()
     def is_row_empty(self, selected_row:int)->bool:
         """
         Проверяет, пуста ли строка таблицы.
@@ -134,18 +137,6 @@ class ExpenseView(QtWidgets.QWidget):
             if item is not None and item.text():
                 return False
         return True
-    def update_from_category(self, pk_cat_deleted: List[int]):
-        """
-        Обновляет таблицу расходов после обновления репозитории категорий
-        """
-        for i, exp in enumerate(self.exp_mem_repo.get_all()):
-            for pk_del in pk_cat_deleted:
-                if exp.category == pk_del:
-                    self.expense_table.removeRow(i)
-                    self.exp_mem_repo.delete(pk = exp.pk)
-                if exp.category > pk_del:
-                    exp.category -= 1
-                    self.exp_mem_repo.update(exp)
 if __name__ == '__main__':
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)

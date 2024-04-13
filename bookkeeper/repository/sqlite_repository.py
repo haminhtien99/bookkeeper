@@ -39,7 +39,7 @@ class SQLiteRepository(AbstractRepository[T]):
         for field, value in obj_dict.items():
             if not isinstance(value, self.fields[field]):
                 # Если тип не соответствует ожидаемому, возвращаем None
-                return 
+                return
         obj_dict['pk'] = pk
         obj = self.cls(**obj_dict)
         return obj
