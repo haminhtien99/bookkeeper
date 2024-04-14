@@ -115,7 +115,7 @@ class ExpenseView(QtWidgets.QWidget):
             show_warning_dialog(message='Выберите не пустую строку для редактирования',
                                 title='Edit')
             return
-        exp_current_row = self.exp_mem_repo.get(selected_row + 1)
+        exp_current_row = self.exp_mem_repo.get_all()[selected_row]
         dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
                                      title='Edit',
                                      exp=exp_current_row)
