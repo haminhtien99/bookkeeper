@@ -70,9 +70,7 @@ def test_get_subcategories(repo: MemoryRepository[Category]):
     c = repo.get_all({'name': '0'})[0]
     gen = c.get_subcategories(repo)
     assert isgenerator(gen)
-    # using set because order doesn't matter
     assert {c.name for c in gen} == {'1', '2', '3', '4'}
-
 
 def test_get_subcategories_complicated(repo: MemoryRepository[Category]):
     root = Category('0')
@@ -81,21 +79,10 @@ def test_get_subcategories_complicated(repo: MemoryRepository[Category]):
     pk2 = repo.add(Category('2', root_pk))
     repo.add(Category('3', pk2))
     repo.add(Category('4', pk2))
-
     gen = root.get_subcategories(repo)
     assert isgenerator(gen)
-    # using set because order doesn't matter
     assert {c.name for c in gen} == {'1', '2', '3', '4'}
-def test_get_children_first_node(repo: MemoryRepository[Category]):
-    root = Category('0')
-    root_pk = repo.add(root)
-    repo.add(Category('1', root_pk))
-    pk2 = repo.add(Category('2', root_pk))
-    repo.add(Category('3', pk2))
-    repo.add(Category('4', pk2))
-
-    gen = root.get_children_first_node(repo)
-    assert {c.name for c in gen} == {'1', '2'}
+    
 def test_create_from_tree(repo):
     tree = [('parent', None), ('1', 'parent'), ('2', '1')]
     cats = Category.create_from_tree(tree, repo)

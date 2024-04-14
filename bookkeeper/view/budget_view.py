@@ -28,7 +28,7 @@ class BudgetView(QtWidgets.QWidget):
         self.layout.addWidget(self.set_budget_button)
         self.setLayout(self.layout)
     def show_budget_widget(self,
-                           exp_mem_repo: MemoryRepository[Expense]) -> None:
+                           exp_mem_repo: MemoryRepository[Expense] | None = None) -> None:
         """
         Показывает виджет с бюджетом
         """
@@ -51,15 +51,12 @@ class BudgetView(QtWidgets.QWidget):
         self.budget_table.setItem(2,
                                   1,
                                   QtWidgets.QTableWidgetItem(str(self.budget.month)))
-    def update_expense_column(self, exp_mem_repo: MemoryRepository[Expense]):
+    def update_expense_column(self,
+                              exp_mem_repo: MemoryRepository[Expense] | None = None) -> None:
         """
         Получить расход за день, неделю, месяц из репозитории расходов
         """
-        if len(exp_mem_repo.get_all()) == 0:
-            self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem('0'))
-            self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem('0'))
-            self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem('0'))
-        else:
+        if exp_mem_repo is not None and len(exp_mem_repo.get_all()) != 0:
             day_week_month = get_day_week_month()
             today = day_week_month['today']
             this_week = day_week_month['this_week']
@@ -81,6 +78,11 @@ class BudgetView(QtWidgets.QWidget):
             self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(day_sum)))
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem(str(week_sum)))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem(str(month_sum)))
+            
+        else:
+            self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem('0'))
+            self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem('0'))
+            self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem('0'))
     def check_warning_budget(self):
         """
         Вывести предупреждение о бюджете

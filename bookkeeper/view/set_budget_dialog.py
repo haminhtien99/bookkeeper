@@ -21,7 +21,7 @@ class SetBudgetDialog(QtWidgets.QDialog):
         self.edit_budget_weekly.setText(str(budget.week))
         layout.addLayout( h_widget_with_label('Бюджет на неделю ', self.edit_budget_weekly))
         self.edit_budget_monthly = QtWidgets.QLineEdit()
-        self.edit_budget_monthly.setText(str(budget.week))
+        self.edit_budget_monthly.setText(str(budget.month))
         layout.addLayout(h_widget_with_label('Бюджет на месяц ', self.edit_budget_monthly))
         apply_button = QtWidgets.QPushButton('Apply')
         layout.addWidget(apply_button)
