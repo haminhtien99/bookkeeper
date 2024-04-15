@@ -9,14 +9,17 @@ from bookkeeper.utils import show_warning_dialog, create_table_db
 from bookkeeper.models.expense import Expense
 from bookkeeper.models.category import Category
 from bookkeeper.view.change_expense_dialog import ChangeExpenseDialog
+
+
 class ExpenseView(QtWidgets.QWidget):
     """
     Виджет расхода в главном окне
     """
-    expenseEdited = QtCore.Signal() # Сигнал изменения данных расхода 
+    expenseEdited = QtCore.Signal()   # Сигнал изменения данных расхода
+
     def __init__(self,
                  exp_mem_repo: MemoryRepository[Expense],
-                 cat_mem_repo: MemoryRepository[Category])->None:
+                 cat_mem_repo: MemoryRepository[Category]) -> None:
         super().__init__()
         self.cat_mem_repo = cat_mem_repo
         self.exp_mem_repo = exp_mem_repo
@@ -35,10 +38,15 @@ class ExpenseView(QtWidgets.QWidget):
         self.edit_button.clicked.connect(self.edit_expense_dialog)
         self.layout.addWidget(self.edit_button)
         self.setLayout(self.layout)
-    def build_expense_widget(self)-> None:
+        self.edit_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
+                                               title='Edit')
+        self.add_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
+                                              title='Add')
+
+    def build_expense_widget(self) -> None:
         """
         Виджет для отображения таблицы расходов.
-        """        
+        """
         columns = "Дата Сумма Категория Комментарий".split()
         self.expense_table.setColumnCount(4)
         self.expense_table.setRowCount(10)
@@ -53,7 +61,8 @@ class ExpenseView(QtWidgets.QWidget):
         self.set_data()
         self.expense_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
                                          QtWidgets.QSizePolicy.Expanding)
-    def set_data(self)-> None:
+
+    def set_data(self) -> None:
         """
         Устанавливает данные в таблицу.
         """
@@ -61,17 +70,18 @@ class ExpenseView(QtWidgets.QWidget):
         for i, exp in enumerate(expenses):
             if i == self.expense_table.rowCount():
                 self.expense_table.insertRow(i)
-            cat =  self.cat_mem_repo.get(exp.category)
+            cat = self.cat_mem_repo.get(exp.category)
             row = [exp.expense_date, str(exp.amount), cat.name, exp.comment]
             for j, value in enumerate(row):
                 self.expense_table.setItem(i, j, QtWidgets.QTableWidgetItem(value))
-    def delete_row(self)-> None:
+
+    def delete_row(self) -> None:
         """
         Удаляет выбранную строку из таблицы. Автоматически удаляет первую строку
         pk следующих строк уменьшается на 1 единицу и удаляется последний pk
         """
         selected_row = self.expense_table.currentRow()
-        if self.is_row_empty(selected_row ) is True:
+        if self.is_row_empty(selected_row) is True:
             show_warning_dialog(message='Выберите не пустую строку для удаления',
                                 title='Delete')
             return
@@ -85,20 +95,21 @@ class ExpenseView(QtWidgets.QWidget):
             show_warning_dialog(message='Удалена')
         else:
             show_warning_dialog(message='В таблице нет строки', title='Delete')
-    def add_expense_dialog(self)->None:
+
+    def add_expense_dialog(self) -> None:
         """
         Открывает диалог добавления нового расхода.
         """
-        dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
-                                     title='Add')
-        dialog.exec()
-        if dialog.exp is not None:
-            cat =  self.cat_mem_repo.get(dialog.exp.category)
-            row = [dialog.exp.expense_date,
-                   str(dialog.exp.amount),
+        self.add_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
+                                              title='Add')
+        self.add_dialog.exec()
+        if self.add_dialog.exp is not None:
+            cat = self.cat_mem_repo.get(self.add_dialog.exp.category)
+            row = [self.add_dialog.exp.expense_date,
+                   str(self.add_dialog.exp.amount),
                    cat.name,
-                   dialog.exp.comment]
-            self.exp_mem_repo.add(dialog.exp)
+                   self.add_dialog.exp.comment]
+            self.exp_mem_repo.add(self.add_dialog.exp)
             len_exp_repo = len(self.exp_mem_repo.get_all())
             if len_exp_repo > self.expense_table.rowCount():
                 self.expense_table.insertRow(self.expense_table.rowCount())
@@ -106,7 +117,8 @@ class ExpenseView(QtWidgets.QWidget):
                 self.expense_table.setItem(len_exp_repo - 1, j,
                                            QtWidgets.QTableWidgetItem(value))
             self.expenseEdited.emit()
-    def edit_expense_dialog(self)->None:
+
+    def edit_expense_dialog(self) -> None:
         """
         Открывает диалог редактирования строки таблицы.
         """
@@ -116,19 +128,21 @@ class ExpenseView(QtWidgets.QWidget):
                                 title='Edit')
             return
         exp_current_row = self.exp_mem_repo.get_all()[selected_row]
-        dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
-                                     title='Edit',
-                                     exp=exp_current_row)
-        dialog.exec()
-        if dialog.exp is not None:
-            exp = dialog.exp
-            cat =  self.cat_mem_repo.get(exp.category)
+        self.edit_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
+                                               title='Edit',
+                                               exp=exp_current_row)
+        self.edit_dialog.exec()
+        if self.edit_dialog.exp is not None:
+            exp = self.edit_dialog.exp
+            cat = self.cat_mem_repo.get(exp.category)
             row = [exp.expense_date, str(exp.amount), cat.name, exp.comment]
             for j, value in enumerate(row):
-                self.expense_table.setItem(selected_row, j, QtWidgets.QTableWidgetItem(value))
+                self.expense_table.setItem(selected_row, j,
+                                           QtWidgets.QTableWidgetItem(value))
             self.exp_mem_repo.update(exp)
             self.expenseEdited.emit()
-    def is_row_empty(self, selected_row:int)->bool:
+
+    def is_row_empty(self, selected_row: int) -> bool:
         """
         Проверяет, пуста ли строка таблицы.
         """
@@ -137,11 +151,13 @@ class ExpenseView(QtWidgets.QWidget):
             if item is not None and item.text():
                 return False
         return True
+
+
 if __name__ == '__main__':
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
-    category_repo = SQLiteRepository(db_file = DB_FILE, cls=Category)
-    expense_repo = SQLiteRepository(db_file = DB_FILE, cls=Expense)
+    category_repo = SQLiteRepository(db_file=DB_FILE, cls=Category)
+    expense_repo = SQLiteRepository(db_file=DB_FILE, cls=Expense)
     create_table_db(db_file=DB_FILE, cls=Category)
     create_table_db(db_file=DB_FILE, cls=Expense)
     category_mem_repo = MemoryRepository[Category]()
@@ -154,8 +170,8 @@ if __name__ == '__main__':
         expense_mem_repo.add(exp)
     window = ExpenseView(exp_mem_repo=expense_mem_repo,
                          cat_mem_repo=category_mem_repo)
-    window.setWindowTitle('Category')
-    window.resize(500,500)
+    window.setWindowTitle('Expense View')
+    window.resize(500, 500)
     window.setLayout(window.layout)
     window.show()
     sys.exit(app.exec())

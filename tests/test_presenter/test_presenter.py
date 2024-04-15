@@ -1,8 +1,10 @@
-import sys
-from PySide6.QtWidgets import QApplication
+"""Тест главного окна"""
 from unittest.mock import MagicMock
 from bookkeeper.presenter.presenter import MainWindow
+
+
 def test_main_window(qtbot, mocker):
+    """Тест главного окна"""
     exp_sql_repo_mock = MagicMock()
     budget_sql_repo_mock = MagicMock()
     cat_sql_repo_mock = MagicMock()
@@ -12,9 +14,5 @@ def test_main_window(qtbot, mocker):
     window.show()
     assert window.windowTitle() == 'The Bookkeeper'
     assert window.isVisible()
-    assert window.layout.count() == 5 
+    assert window.layout.count() == 5
     window.close()
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    test_main_window()
-    sys.exit(app.exec())

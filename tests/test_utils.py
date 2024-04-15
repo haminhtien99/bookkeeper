@@ -1,16 +1,27 @@
+"""
+Test utils
+"""
 import tempfile
 from textwrap import dedent
 from datetime import datetime, timedelta
 import pytest
 import sqlite3
-from unittest.mock import Mock
+from unittest.mock import patch
+from PySide6 import QtWidgets
 from bookkeeper.utils import (read_tree, 
                               get_day_week_month,
                               create_table_db,
-                              get_categories)
+                              get_categories,
+                              list_category_widget,
+                              show_warning_dialog,
+                              set_data,h_widget_with_label,
+                              v_widget_with_label)
 from bookkeeper.models.category import Category
 from bookkeeper.models.budget import Budget
 from bookkeeper.models.expense import Expense
+from bookkeeper.repository.memory_repository import MemoryRepository
+
+
 def test_create_tree():
     text = dedent('''
         parent1
@@ -76,6 +87,49 @@ def test_with_file():
             ('child2', 'parent1'),
             ('parent2', None)
         ]
+@patch('PySide6.QtWidgets.QMessageBox')
+def test_show_warning_dialog(qtbot):
+    message = "Test message"
+    title = "Warning"
+    show_warning_dialog(message=message,
+                        title=title)
+    assert qtbot.widget(QtWidgets.QMessageBox,
+                        title=title, text=message)
+def test_set_data(qtbot):
+    tableWidget = QtWidgets.QTableWidget()
+    tableWidget.setRowCount(2)
+    tableWidget.setColumnCount(2)
+    data = [['apple', 'banana'], ['orange', 'grape']]
+    set_data(tableWidget, data)
+    assert tableWidget.rowCount() == len(data)
+    assert tableWidget.columnCount() == len(data[0])
+    for i, row in enumerate(data):
+        for j, x in enumerate(row):
+            item = tableWidget.item(i, j)
+            assert item is not None
+            assert item.text() == x.capitalize()
+def test_h_widget_with_label():
+    text = "Label Text"
+    widget = QtWidgets.QPushButton("Button")
+    layout = h_widget_with_label(text, widget)
+    assert isinstance(layout, QtWidgets.QHBoxLayout)
+    assert layout.count() == 2
+    label = layout.itemAt(0).widget()
+    assert isinstance(label, QtWidgets.QLabel)
+    assert label.text() == text
+    button = layout.itemAt(1).widget()
+    assert button == widget
+def test_v_widget_with_label():
+    text = "Label Text"
+    widget = QtWidgets.QPushButton("Button")
+    layout = v_widget_with_label(text, widget)
+    assert isinstance(layout, QtWidgets.QVBoxLayout)
+    assert layout.count() == 2
+    label = layout.itemAt(0).widget()
+    assert isinstance(label, QtWidgets.QLabel)
+    assert label.text() == text
+    button = layout.itemAt(1).widget()
+    assert button == widget
 def test_get_day_week_month():
     today = datetime.now()
     start_of_week = today - timedelta(days=today.weekday())
@@ -89,7 +143,6 @@ def test_get_day_week_month():
         'this_month': [start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')]
     }
     assert get_day_week_month() == expected_result
-
 def test_create_table_db():
     test_db = "test.db"
     create_table_db(test_db, cls=Category)
@@ -114,15 +167,25 @@ def test_create_table_db():
     assert len(expense_columns) == 6
     conn.commit()
     conn.close()
-
-
-
-
-def test_get_categories():
-    category1 = Category(name="Category 1", pk=1)
-    category2 = Category(name="Category 2", pk=2)
-    mock_repo = Mock()
-    mock_repo.get_all.return_value = [category1, category2]
-    result = get_categories(mock_repo)
+@pytest.fixture
+def repo():
+    category1 = Category(name="Category 1")
+    category2 = Category(name="Category 2")
+    repo = MemoryRepository()
+    repo.add(category1)
+    repo.add(category2)
+    return repo
+def test_get_categories(repo):
+    result = get_categories(repo)
     assert result == {"Category 1": 1, "Category 2": 2}
-    mock_repo.get_all.assert_called_once()
+@pytest.fixture
+def test_list_category_widget(repo):
+    layout = list_category_widget(repo)
+    assert isinstance(layout, QtWidgets.QHBoxLayout)
+    assert layout.count() == 2
+    label = layout.itemAt(0).widget()
+    assert isinstance(label, QtWidgets.QLabel)
+    assert label.text() == 'Категории'
+    combobox = layout.itemAt(1).widget()
+    assert isinstance(combobox, QtWidgets.QComboBox)
+    assert combobox.count() == 2

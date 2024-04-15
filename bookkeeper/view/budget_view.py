@@ -10,6 +10,8 @@ from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.models.budget import Budget
 from bookkeeper.models.expense import Expense
 from bookkeeper.view.set_budget_dialog import SetBudgetDialog
+
+
 class BudgetView(QtWidgets.QWidget):
     """
     Виджет отображает бюджет в главном окне
@@ -27,6 +29,7 @@ class BudgetView(QtWidgets.QWidget):
         self.set_budget_button.clicked.connect(self.set_budget_dialog)
         self.layout.addWidget(self.set_budget_button)
         self.setLayout(self.layout)
+
     def show_budget_widget(self,
                            exp_mem_repo: MemoryRepository[Expense] | None = None) -> None:
         """
@@ -39,7 +42,8 @@ class BudgetView(QtWidgets.QWidget):
         self.budget_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         self.update_budget_column()
         self.update_expense_column(exp_mem_repo=exp_mem_repo)
-        # self.check_warning_budget()
+        self.check_warning_budget()
+
     def update_budget_column(self):
         """Показать столбец бюджета таблицы Бюджета"""
         self.budget_table.setItem(0,
@@ -51,8 +55,10 @@ class BudgetView(QtWidgets.QWidget):
         self.budget_table.setItem(2,
                                   1,
                                   QtWidgets.QTableWidgetItem(str(self.budget.month)))
+
     def update_expense_column(self,
-                              exp_mem_repo: MemoryRepository[Expense] | None = None) -> None:
+                              exp_mem_repo: MemoryRepository[Expense] | None = None
+                              ) -> None:
         """
         Получить расход за день, неделю, месяц из репозитории расходов
         """
@@ -63,9 +69,9 @@ class BudgetView(QtWidgets.QWidget):
             this_month = day_week_month['this_month']
             exps_day = exp_mem_repo.get_all({'expense_date': today})
             exps_week = exp_mem_repo.get_all({'expense_date': this_week},
-                                         value_range=True)
+                                             value_range=True)
             exps_month = exp_mem_repo.get_all({'expense_date': this_month},
-                                          value_range=True)
+                                              value_range=True)
             day_sum = 0.
             for exp in exps_day:
                 day_sum += exp.amount
@@ -78,11 +84,11 @@ class BudgetView(QtWidgets.QWidget):
             self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem(str(day_sum)))
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem(str(week_sum)))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem(str(month_sum)))
-            
         else:
             self.budget_table.setItem(0, 0, QtWidgets.QTableWidgetItem('0'))
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem('0'))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem('0'))
+
     def check_warning_budget(self):
         """
         Вывести предупреждение о бюджете
@@ -99,6 +105,7 @@ class BudgetView(QtWidgets.QWidget):
             show_warning_dialog(message='Расход в течение недели превышает бюджета')
         if month_sum > month_budget:
             show_warning_dialog(message='Расход в течение месяца превышает бюджета')
+
     def set_budget_dialog(self) -> None:
         """
         Открыть диалог для задания бюджета
@@ -108,14 +115,16 @@ class BudgetView(QtWidgets.QWidget):
         if dialog.budget is not None:
             self.budget = dialog.budget
             self.update_budget_column()
+
+
 if __name__ == '__main__':
     """
     Run the budget window
     """
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
-    budget_sql_repo = SQLiteRepository(db_file = DB_FILE, cls=Budget)
-    expense_sql_repo = SQLiteRepository(db_file = DB_FILE, cls=Expense)
+    budget_sql_repo = SQLiteRepository(db_file=DB_FILE, cls=Budget)
+    expense_sql_repo = SQLiteRepository(db_file=DB_FILE, cls=Expense)
     create_table_db(db_file=DB_FILE, cls=Budget)
     create_table_db(db_file=DB_FILE, cls=Expense)
     expense_mem_repo = MemoryRepository[Expense]()

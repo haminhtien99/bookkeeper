@@ -2,6 +2,8 @@
 Модель Бюджет
 """
 from dataclasses import dataclass
+
+
 @dataclass
 class Budget:
     """

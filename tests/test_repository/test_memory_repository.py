@@ -1,5 +1,4 @@
 from bookkeeper.repository.memory_repository import MemoryRepository
-
 import pytest
 
 
@@ -7,7 +6,6 @@ import pytest
 def custom_class():
     class Custom():
         pk = 0
-
     return Custom
 
 

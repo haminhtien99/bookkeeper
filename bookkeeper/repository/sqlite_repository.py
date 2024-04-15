@@ -5,6 +5,8 @@ import sqlite3
 from typing import Any
 from inspect import get_annotations
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
+
+
 class SQLiteRepository(AbstractRepository[T]):
     """
     Репозиторий для работы с БД SQLite
@@ -12,9 +14,10 @@ class SQLiteRepository(AbstractRepository[T]):
     def __init__(self, db_file: str, cls: type) -> None:
         self.db_file = db_file
         self.table_name = cls.__name__.lower()
-        self.fields = get_annotations(cls, eval_str = True)
+        self.fields = get_annotations(cls, eval_str=True)
         self.fields.pop('pk')
         self.cls = cls
+
     def add(self, obj: T) -> int:
         names = ', '.join(self.fields.keys())
         set_clause = ', '.join("?" * len(self.fields))
@@ -22,9 +25,11 @@ class SQLiteRepository(AbstractRepository[T]):
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             cur.execute('PRAGMA foreign_keys = ON')
-            cur.execute(f"INSERT INTO {self.table_name} ({names}) VALUES ({set_clause})", values)
+            query = f"INSERT INTO {self.table_name} ({names}) VALUES ({set_clause})"
+            cur.execute(query, values)
         conn.close()
         return obj.pk
+
     def get(self, pk: int) -> T | None:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
@@ -43,8 +48,9 @@ class SQLiteRepository(AbstractRepository[T]):
         obj_dict['pk'] = pk
         obj = self.cls(**obj_dict)
         return obj
-    def get_all(self, where: dict[str, Any]|None = None,
-                value_range = False)->list[T]:
+
+    def get_all(self, where: dict[str, Any] | None = None,
+                value_range=False) -> list[T]:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             cur.execute(f"PRAGMA table_info({self.table_name})")
@@ -54,7 +60,7 @@ class SQLiteRepository(AbstractRepository[T]):
                 query = f"SELECT * FROM {self.table_name}"
                 cur.execute(query)
                 rows = cur.fetchall()
-            elif value_range is True: # Найти значения в определенном диапазоне
+            elif value_range is True:   # Найти значения в определенном диапазоне
                 key = next(iter(where.keys()))
                 query = f"""
                 SELECT * FROM {self.table_name}
@@ -75,6 +81,7 @@ class SQLiteRepository(AbstractRepository[T]):
             obj = self.cls(**obj_dict)
             list_obj_dict.append(obj)
         return list_obj_dict
+
     def update(self, obj: T) -> None:
         if obj.pk == 0:
             raise ValueError('attempt to update object with unknown primary key')
@@ -82,10 +89,11 @@ class SQLiteRepository(AbstractRepository[T]):
             cur = conn.cursor()
             values = [getattr(obj, x) for x in self.fields]
             set_clause = ', '.join(f'{field} = ?' for field in self.fields.keys())
-            query =f"UPDATE {self.table_name} SET {set_clause} WHERE pk = {obj.pk}"
+            query = f"UPDATE {self.table_name} SET {set_clause} WHERE pk = {obj.pk}"
             cur.execute(query, values)
         conn.close()
-    def delete(self,pk: int)-> None:
+
+    def delete(self, pk: int) -> None:
         self.get(pk)
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()

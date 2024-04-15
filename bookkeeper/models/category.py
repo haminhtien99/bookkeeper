@@ -4,7 +4,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Iterator
-
 from ..repository.abstract_repository import AbstractRepository
 
 
@@ -84,6 +83,7 @@ class Category:
         for cat in repo.get_all():
             subcats[cat.parent].append(cat)
         return get_children(subcats, self.pk)
+
     @classmethod
     def create_from_tree(
             cls,
