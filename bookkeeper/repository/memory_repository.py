@@ -3,7 +3,7 @@
 """
 
 from itertools import count
-from typing import Any
+from typing import Any, Optional, Dict
 
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
@@ -28,7 +28,8 @@ class MemoryRepository(AbstractRepository[T]):
     def get(self, pk: int) -> T | None:
         return self._container.get(pk)
 
-    def get_all(self, where: dict[str, Any] | None = None,
+    def get_all(self,
+                where: Optional[Dict[str, Any]] = None,
                 value_range=False) -> list[T]:
         if where is None:
             return list(self._container.values())

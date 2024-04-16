@@ -8,13 +8,14 @@ import pytest
 import sqlite3
 from unittest.mock import patch
 from PySide6 import QtWidgets
-from bookkeeper.utils import (read_tree, 
+from bookkeeper.utils import (read_tree,
                               get_day_week_month,
                               create_table_db,
                               get_categories,
                               list_category_widget,
                               show_warning_dialog,
-                              set_data,h_widget_with_label,
+                              set_data,
+                              h_widget_with_label,
                               v_widget_with_label)
 from bookkeeper.models.category import Category
 from bookkeeper.models.budget import Budget
@@ -87,6 +88,8 @@ def test_with_file():
             ('child2', 'parent1'),
             ('parent2', None)
         ]
+
+
 @patch('PySide6.QtWidgets.QMessageBox')
 def test_show_warning_dialog(qtbot):
     message = "Test message"
@@ -95,6 +98,8 @@ def test_show_warning_dialog(qtbot):
                         title=title)
     assert qtbot.widget(QtWidgets.QMessageBox,
                         title=title, text=message)
+
+
 def test_set_data(qtbot):
     tableWidget = QtWidgets.QTableWidget()
     tableWidget.setRowCount(2)
@@ -108,6 +113,8 @@ def test_set_data(qtbot):
             item = tableWidget.item(i, j)
             assert item is not None
             assert item.text() == x.capitalize()
+
+
 def test_h_widget_with_label():
     text = "Label Text"
     widget = QtWidgets.QPushButton("Button")
@@ -119,6 +126,8 @@ def test_h_widget_with_label():
     assert label.text() == text
     button = layout.itemAt(1).widget()
     assert button == widget
+
+
 def test_v_widget_with_label():
     text = "Label Text"
     widget = QtWidgets.QPushButton("Button")
@@ -130,6 +139,8 @@ def test_v_widget_with_label():
     assert label.text() == text
     button = layout.itemAt(1).widget()
     assert button == widget
+
+
 def test_get_day_week_month():
     today = datetime.now()
     start_of_week = today - timedelta(days=today.weekday())
@@ -139,10 +150,14 @@ def test_get_day_week_month():
     end_of_month = next_month - timedelta(days=1)
     expected_result = {
         'today': today.strftime('%Y-%m-%d'),
-        'this_week': [start_of_week.strftime('%Y-%m-%d'), end_of_week.strftime('%Y-%m-%d')],
-        'this_month': [start_of_month.strftime('%Y-%m-%d'), end_of_month.strftime('%Y-%m-%d')]
+        'this_week': [start_of_week.strftime('%Y-%m-%d'),
+                      end_of_week.strftime('%Y-%m-%d')],
+        'this_month': [start_of_month.strftime('%Y-%m-%d'),
+                       end_of_month.strftime('%Y-%m-%d')]
     }
     assert get_day_week_month() == expected_result
+
+
 def test_create_table_db():
     test_db = "test.db"
     create_table_db(test_db, cls=Category)
@@ -167,6 +182,8 @@ def test_create_table_db():
     assert len(expense_columns) == 6
     conn.commit()
     conn.close()
+
+
 @pytest.fixture
 def repo():
     category1 = Category(name="Category 1")
@@ -175,9 +192,13 @@ def repo():
     repo.add(category1)
     repo.add(category2)
     return repo
+
+
 def test_get_categories(repo):
     result = get_categories(repo)
     assert result == {"Category 1": 1, "Category 2": 2}
+
+
 @pytest.fixture
 def test_list_category_widget(repo):
     layout = list_category_widget(repo)

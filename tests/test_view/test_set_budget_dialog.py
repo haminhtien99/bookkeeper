@@ -32,7 +32,7 @@ def test_validation_invalid_data(dialog, qtbot):
 
 def test_validation_valid_data(dialog, qtbot):
     """Тест валидации верных данных"""
-    dialog.edit_budget_daily.clear() 
+    dialog.edit_budget_daily.clear()
     dialog.edit_budget_weekly.clear()
     dialog.edit_budget_monthly.clear()
     qtbot.keyClicks(dialog.edit_budget_daily, '70')

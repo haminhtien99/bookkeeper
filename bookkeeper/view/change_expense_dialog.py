@@ -70,7 +70,12 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         comment = self.comment_line_edit.text()
         amount = self.amount_line_edit.text().strip()
         expense_date = self.expense_date_line_edit.text().strip()
-        category_obj = self.cat_repo.get(self.categories[self.combobox.currentText()])
+        try:
+            category_obj = self.cat_repo.get(self.categories[self.combobox.currentText()])
+        except:
+            show_warning_dialog(message='Создайте новую категорию',
+                                title='Add Expense')
+            return
         cat = category_obj.pk
         added_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if amount and expense_date:

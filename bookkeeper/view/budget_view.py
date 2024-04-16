@@ -2,6 +2,7 @@
 Виджет для бюджета
 """
 import sys
+from typing import Optional
 from PySide6 import QtWidgets
 from bookkeeper.utils import (v_widget_with_label, create_table_db,
                               show_warning_dialog, get_day_week_month)
@@ -17,11 +18,13 @@ class BudgetView(QtWidgets.QWidget):
     Виджет отображает бюджет в главном окне
     """
     def __init__(self,
-                 budget: Budget,
+                 budget: Optional[Budget],
                  exp_mem_repo: MemoryRepository[Expense]) -> None:
         super().__init__()
-        self.budget = budget
-        self.layout = QtWidgets.QVBoxLayout()
+        if budget is None:
+            self.budget = Budget(day=0., week=0., month=0.)
+        else: self.budget = budget
+        self.layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
         self.budget_table = QtWidgets.QTableWidget(2, 3)
         self.show_budget_widget(exp_mem_repo)
         self.layout.addLayout(v_widget_with_label('Бюджет', self.budget_table))
@@ -39,12 +42,12 @@ class BudgetView(QtWidgets.QWidget):
         self.budget_table.setRowCount(3)
         self.budget_table.setHorizontalHeaderLabels(['Сумма', 'Бюджет'])
         self.budget_table.setVerticalHeaderLabels(['День', 'Неделя', 'Месяц'])
-        self.budget_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+        self.budget_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.update_budget_column()
         self.update_expense_column(exp_mem_repo=exp_mem_repo)
         self.check_warning_budget()
 
-    def update_budget_column(self):
+    def update_budget_column(self) -> None:
         """Показать столбец бюджета таблицы Бюджета"""
         self.budget_table.setItem(0,
                                   1,
@@ -89,7 +92,7 @@ class BudgetView(QtWidgets.QWidget):
             self.budget_table.setItem(1, 0, QtWidgets.QTableWidgetItem('0'))
             self.budget_table.setItem(2, 0, QtWidgets.QTableWidgetItem('0'))
 
-    def check_warning_budget(self):
+    def check_warning_budget(self) -> None:
         """
         Вывести предупреждение о бюджете
         """
@@ -123,20 +126,23 @@ if __name__ == '__main__':
     """
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
+    budget_sql_repo: SQLiteRepository[Budget]
     budget_sql_repo = SQLiteRepository(db_file=DB_FILE, cls=Budget)
+    expense_sql_repo: SQLiteRepository[Expense]
     expense_sql_repo = SQLiteRepository(db_file=DB_FILE, cls=Expense)
     create_table_db(db_file=DB_FILE, cls=Budget)
     create_table_db(db_file=DB_FILE, cls=Expense)
     expense_mem_repo = MemoryRepository[Expense]()
-    budget = Budget(day=0., week=0., month=0.)
-    if len(budget_sql_repo.get_all()) > 0:
+    try:
         budget = budget_sql_repo.get(1)
+    except:
+        budget = Budget(day=0., week=0., month=0.)
     if len(expense_sql_repo.get_all()) > 0:
         for exp in expense_sql_repo.get_all():
             exp.pk = 0
             expense_mem_repo.add(exp)
     window = BudgetView(budget=budget, exp_mem_repo=expense_mem_repo)
-    window.setWindowTitle('Set Budget')
+    window.setWindowTitle('Budget')
     window.resize(500, 500)
     window.setLayout(window.layout)
     window.show()

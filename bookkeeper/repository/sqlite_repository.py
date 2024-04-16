@@ -2,7 +2,7 @@
 Модуль описывает репозиторий, работающий в БД SQLite
 """
 import sqlite3
-from typing import Any
+from typing import Any, Optional
 from inspect import get_annotations
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
@@ -30,7 +30,7 @@ class SQLiteRepository(AbstractRepository[T]):
         conn.close()
         return obj.pk
 
-    def get(self, pk: int) -> T | None:
+    def get(self, pk: int) -> Optional[T]:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             names = ', '.join(self.fields.keys())
@@ -38,18 +38,19 @@ class SQLiteRepository(AbstractRepository[T]):
             cur.execute(query)
             row = cur.fetchone()
             if row is None:
-                raise ValueError('attempt to update object with unknown primary key')
+                raise ValueError('attempt to get object with unknown primary key')
         conn.close()
         obj_dict = dict(zip(self.fields.keys(), row))
         for field, value in obj_dict.items():
             if not isinstance(value, self.fields[field]):
                 # Если тип не соответствует ожидаемому, возвращаем None
-                return
+                return None
         obj_dict['pk'] = pk
         obj = self.cls(**obj_dict)
         return obj
 
-    def get_all(self, where: dict[str, Any] | None = None,
+    def get_all(self,
+                where: dict[str, Any] | None = None,
                 value_range=False) -> list[T]:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()

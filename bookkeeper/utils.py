@@ -104,7 +104,7 @@ def v_widget_with_label(text: str, widget: QtWidgets.QWidget) -> QtWidgets.QVBox
     return hl
 
 
-def get_day_week_month():
+def get_day_week_month() -> dict[str, list[str]]:
     """
     Возвращает текущий день, неделю и месяц.
     """
