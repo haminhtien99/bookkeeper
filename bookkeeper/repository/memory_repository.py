@@ -30,7 +30,7 @@ class MemoryRepository(AbstractRepository[T]):
 
     def get_all(self,
                 where: Optional[Dict[str, Any]] = None,
-                value_range=False) -> list[T]:
+                value_range: bool = False) -> list[T]:
         if where is None:
             return list(self._container.values())
         elif value_range is True:

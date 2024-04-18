@@ -2,6 +2,7 @@
 Виджет для показа списка категорий
 """
 import sys
+from typing import List
 from PySide6 import QtWidgets
 from PySide6 import QtCore
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
@@ -13,7 +14,7 @@ from bookkeeper.view.category_dialogs import (AddCategoryDialog,
                                               DeleteConfirmationDialog)
 
 
-class CategoryWindow(QtWidgets.QWidget):
+class CategoryWindow(QtWidgets.QMainWindow):
     """Окно для управления категориями."""
     categoryEdited = QtCore.Signal()  # Сигнал изменения данных категории
 
@@ -21,27 +22,29 @@ class CategoryWindow(QtWidgets.QWidget):
         super().__init__()
         self.setWindowTitle('Категории')
         self.cat_mem_repo = cat_mem_repo
-        self.layout = QtWidgets.QVBoxLayout()
+        central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(central_widget)
+        layout = QtWidgets.QVBoxLayout()
         self.tree = QtWidgets.QTreeWidget()
         self.tree.setHeaderLabels(["Categories"])
         self.build_tree()
-        self.layout.addWidget(self.tree)
+        layout.addWidget(self.tree)
         edit_button = QtWidgets.QPushButton('Переименовывать')
         edit_button.clicked.connect(self.edit_button_click)
-        self.layout.addWidget(edit_button)
-        add_button = QtWidgets.QPushButton('Добавить')
+        layout.addWidget(edit_button)
+        add_button = QtWidgets.QPushButton('Добавить подкатегорию')
         add_button.clicked.connect(self.add_button_click)
         add_button_root = QtWidgets.QPushButton('Добавить в корень')
         add_button_root.clicked.connect(self.add_button_root_click)
         hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(add_button)
         hbox.addWidget(add_button_root)
-        self.layout.addLayout(hbox)
+        layout.addLayout(hbox)
         delete_button = QtWidgets.QPushButton('Удалить')
         delete_button.clicked.connect(self.delete_button_click)
-        self.layout.addWidget(delete_button)
-        self.setLayout(self.layout)
-        self.deleted_cat = []
+        layout.addWidget(delete_button)
+        central_widget.setLayout(layout)
+        self.deleted_cat: List[int] = []
         # Диалоги редактирования категорий
         self.edit_dialog = EditCategoryDialog('', self)
         self.add_dialog = AddCategoryDialog(self)
@@ -53,7 +56,8 @@ class CategoryWindow(QtWidgets.QWidget):
         self.tree.clear()
         top_categories = self.cat_mem_repo.get_all(where={'parent': None})
 
-        def build(parent_item: QtWidgets.QTreeWidgetItem, category: Category):
+        def build(parent_item: QtWidgets.QTreeWidgetItem | QtWidgets.QTreeWidget,
+                  category: Category) -> None:
             """Дерево категорий первого уровня"""
             category_item = QtWidgets.QTreeWidgetItem(parent_item, [category.name])
             category_children = self.cat_mem_repo.get_all(where={'parent': category.pk})
@@ -104,10 +108,10 @@ class CategoryWindow(QtWidgets.QWidget):
                         self.categoryEdited.emit()
                     else:
                         show_warning_dialog(message='Название существовал',
-                                            title='Add Category')
+                                            title='Add SubCategory')
                 else:
                     show_warning_dialog(message='Название не может быть пустым',
-                                        title='Add Category')
+                                        title='Add SubCategory')
 
     def add_button_root_click(self) -> None:
         """Отображает диалог для добавления новой категории первого уровня."""
@@ -162,10 +166,10 @@ class CategoryWindow(QtWidgets.QWidget):
         # Удаление категории с дочерними
         self.delete_cat_dialog = DeleteConfirmationDialog(self)
         if self.delete_cat_dialog.exec():
-            result = self.delete_cat_dialog.result
+            choose = self.delete_cat_dialog.choose
             selected_name = selected_item.text(0)
             selected_cat = self.cat_mem_repo.get_all(where={'name': selected_name})[0]
-            if result == 'Delete All Children':
+            if choose == 'Delete All Children':
                 parent = selected_item.parent()
                 if parent is not None:
                     parent.removeChild(selected_item)
@@ -178,7 +182,7 @@ class CategoryWindow(QtWidgets.QWidget):
                 self.cat_mem_repo.delete(selected_cat.pk)
                 self.update_cat_mem_repo()
                 self.categoryEdited.emit()
-            elif result == 'Delete Only This':
+            elif choose == 'Delete Only This':
                 parent = selected_item.parent()
                 for child in self.cat_mem_repo.get_all(where={'parent': selected_cat.pk}):
                     child.parent = selected_cat.parent
@@ -221,7 +225,8 @@ if __name__ == '__main__':
     Проверить работу CategoryWindow
     """
     DB_FILE = 'bookkeeper/view/new_database.db'
-    category_repo = SQLiteRepository(db_file=DB_FILE, cls=Category)
+    category_repo: SQLiteRepository[Category] = SQLiteRepository(db_file=DB_FILE,
+                                                                 cls=Category)
     create_table_db(db_file=DB_FILE, cls=Category)   # if table is not existing
     category_mem_repo = MemoryRepository[Category]()
     for cat in category_repo.get_all():

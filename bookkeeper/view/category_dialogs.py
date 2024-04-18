@@ -54,7 +54,10 @@ class DeleteConfirmationDialog(QtWidgets.QDialog):
     """
     Диалог для подтверждения удаления.
     """
-    def __init__(self, parent=None):
+    choose: str = ''
+
+    def __init__(self,
+                 parent: Optional[QtWidgets.QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Delete Confirmation")
         layout = QtWidgets.QVBoxLayout()
@@ -67,14 +70,13 @@ class DeleteConfirmationDialog(QtWidgets.QDialog):
         self.delete_only_this_button.clicked.connect(self.delete_only_this)
         layout.addWidget(self.delete_only_this_button)
         self.setLayout(layout)
-        self.result = None
 
-    def delete_all_children(self):
+    def delete_all_children(self) -> None:
         """Удалить все дочерние категории."""
-        self.result = "Delete All Children"
+        self.choose = "Delete All Children"
         self.accept()
 
-    def delete_only_this(self):
+    def delete_only_this(self) -> None:
         """Удалить только эту категорию."""
-        self.result = "Delete Only This"
+        self.choose = "Delete Only This"
         self.accept()

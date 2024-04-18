@@ -35,9 +35,9 @@ def test_delete_confirmation_dialog(setup_delete_confirmation_dialog, qtbot):
     delete_dialog = setup_delete_confirmation_dialog
     assert delete_dialog.windowTitle() == "Delete Confirmation"
     qtbot.mouseClick(delete_dialog.delete_all_children_button, QtCore.Qt.LeftButton)
-    assert delete_dialog.result == "Delete All Children"
+    assert delete_dialog.choose == "Delete All Children"
     qtbot.mouseClick(delete_dialog.delete_only_this_button, QtCore.Qt.LeftButton)
-    assert delete_dialog.result == "Delete Only This"
+    assert delete_dialog.choose == "Delete Only This"
 
 
 @pytest.fixture

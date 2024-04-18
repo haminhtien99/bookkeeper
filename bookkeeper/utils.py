@@ -2,7 +2,7 @@
 Вспомогательные функции
 """
 import sqlite3
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, List
 from datetime import datetime, timedelta
 from PySide6 import QtWidgets
 from bookkeeper.repository.abstract_repository import AbstractRepository
@@ -20,7 +20,7 @@ def _lines_with_indent(lines: Iterable[str]) -> Iterator[tuple[int, str]]:
         yield _get_indent(line), line.strip()
 
 
-def read_tree(lines: Iterable[str]) -> list[tuple[str, str | None]]:
+def read_tree(lines: Iterable[str]) -> List[tuple[str, str | None]]:
     """
     Прочитать структуру дерева из текста на основе отступов. Вернуть список
     пар "потомок-родитель" в порядке топологической сортировки. Родитель
@@ -75,7 +75,7 @@ def show_warning_dialog(message: str, title: str = 'Warning') -> None:
     msg_box.exec()
 
 
-def set_data(tableWidget, data: list[list[str]]) -> None:
+def set_data(tableWidget: QtWidgets.QTableWidget, data: List[List[str]]) -> None:
     """
     Устанавливает данные в таблицу.
     """
@@ -104,21 +104,23 @@ def v_widget_with_label(text: str, widget: QtWidgets.QWidget) -> QtWidgets.QVBox
     return hl
 
 
-def get_day_week_month() -> dict[str, list[str]]:
+def get_day_week_month() -> dict[str, List[datetime]]:
     """
     Возвращает текущий день, неделю и месяц.
     """
     today = datetime.now()
+    start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = today.replace(hour=23, minute=59, second=59, microsecond=0)
     start_of_week = today - timedelta(days=today.weekday())
-    end_of_week = today + timedelta(days=6)
-    start_of_month = today.replace(day=1)
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_week = start_of_week + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    start_of_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     next_month = start_of_month.replace(month=start_of_month.month + 1)
-    end_of_month = next_month - timedelta(days=1)
-    return {'today': today.strftime('%Y-%m-%d'),
-            'this_week': [start_of_week.strftime('%Y-%m-%d'),
-                          end_of_week.strftime('%Y-%m-%d')],
-            'this_month': [start_of_month.strftime('%Y-%m-%d'),
-                           end_of_month.strftime('%Y-%m-%d')]}
+    end_of_month = next_month - timedelta(microseconds=1)
+    end_of_month = end_of_month.replace(microsecond=0)
+    return {'today': [start_of_day, end_of_day],
+            'this_week': [start_of_week, end_of_week],
+            'this_month': [start_of_month, end_of_month]}
 
 
 def create_table_db(db_file: str, cls: type) -> None:
@@ -147,8 +149,8 @@ def create_table_db(db_file: str, cls: type) -> None:
                 comment TEXT,
                 amount FLOAT,
                 category INTEGER,
-                added_date TEXT,
-                expense_date TEXT
+                added_date DATETIME,
+                expense_date DATETIME
                 )'''
     if table_name == 'budget':
         cursor.execute(query_budget)
@@ -159,22 +161,12 @@ def create_table_db(db_file: str, cls: type) -> None:
     conn.close()
 
 
-def get_categories(cat_repo: AbstractRepository[Category]) -> dict[str: int]:
+def get_categories(cat_repo: AbstractRepository[Category]) -> List[str]:
     """
     Получить словарь из ключа и названия
     """
     categories = cat_repo.get_all()
-    dict_categories = {}
+    ls_categories = []
     for category in categories:
-        dict_categories[category.name] = category.pk
-    return dict_categories
-
-
-def list_category_widget(cat_repo: AbstractRepository[Category]) -> QtWidgets.QHBoxLayout:
-    """
-    Отображает список категорий в виджет ComboBox
-    """
-    ls_categories = get_categories(cat_repo).keys()
-    combobox = QtWidgets.QComboBox()
-    combobox.addItems(ls_categories)
-    return h_widget_with_label('Категории', combobox)
+        ls_categories.append(category.name)
+    return ls_categories

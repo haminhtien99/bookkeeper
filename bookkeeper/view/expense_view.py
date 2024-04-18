@@ -2,6 +2,7 @@
 Виджет для расхода
 """
 import sys
+from datetime import datetime
 from PySide6 import QtWidgets, QtCore
 from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.repository.sqlite_repository import SQLiteRepository
@@ -23,21 +24,21 @@ class ExpenseView(QtWidgets.QWidget):
         super().__init__()
         self.cat_mem_repo = cat_mem_repo
         self.exp_mem_repo = exp_mem_repo
-        self.layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         self.expense_table = QtWidgets.QTableWidget()
         self.build_expense_widget()
-        self.layout.addWidget(QtWidgets.QLabel('Расходы'))
-        self.layout.addWidget(self.expense_table)
+        layout.addWidget(QtWidgets.QLabel('Расходы'))
+        layout.addWidget(self.expense_table)
         self.add_button = QtWidgets.QPushButton("Новый расход")
         self.add_button.clicked.connect(self.add_expense_dialog)
-        self.layout.addWidget(self.add_button)
+        layout.addWidget(self.add_button)
         self.delete_button = QtWidgets.QPushButton('Удалить расход')
         self.delete_button.clicked.connect(self.delete_row)
-        self.layout.addWidget(self.delete_button)
+        layout.addWidget(self.delete_button)
         self.edit_button = QtWidgets.QPushButton('Редактировать')
         self.edit_button.clicked.connect(self.edit_expense_dialog)
-        self.layout.addWidget(self.edit_button)
-        self.setLayout(self.layout)
+        layout.addWidget(self.edit_button)
+        self.setLayout(layout)
         self.edit_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
                                                title='Edit')
         self.add_dialog = ChangeExpenseDialog(cat_repo=self.cat_mem_repo,
@@ -56,7 +57,7 @@ class ExpenseView(QtWidgets.QWidget):
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
-        self.expense_table.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
+        self.expense_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.expense_table.verticalHeader().hide()
         self.set_data()
         self.expense_table.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
@@ -71,9 +72,10 @@ class ExpenseView(QtWidgets.QWidget):
             if i == self.expense_table.rowCount():
                 self.expense_table.insertRow(i)
             cat = self.cat_mem_repo.get(exp.category)
-            row = [exp.expense_date, str(exp.amount), cat.name, exp.comment]
-            for j, value in enumerate(row):
-                self.expense_table.setItem(i, j, QtWidgets.QTableWidgetItem(value))
+            if cat is not None:
+                row = [str(exp.expense_date), str(exp.amount), cat.name, exp.comment]
+                for j, value in enumerate(row):
+                    self.expense_table.setItem(i, j, QtWidgets.QTableWidgetItem(value))
 
     def delete_row(self) -> None:
         """
@@ -105,18 +107,19 @@ class ExpenseView(QtWidgets.QWidget):
         self.add_dialog.exec()
         if self.add_dialog.exp is not None:
             cat = self.cat_mem_repo.get(self.add_dialog.exp.category)
-            row = [self.add_dialog.exp.expense_date,
-                   str(self.add_dialog.exp.amount),
-                   cat.name,
-                   self.add_dialog.exp.comment]
-            self.exp_mem_repo.add(self.add_dialog.exp)
-            len_exp_repo = len(self.exp_mem_repo.get_all())
-            if len_exp_repo > self.expense_table.rowCount():
-                self.expense_table.insertRow(self.expense_table.rowCount())
-            for j, value in enumerate(row):
-                self.expense_table.setItem(len_exp_repo - 1, j,
-                                           QtWidgets.QTableWidgetItem(value))
-            self.expenseEdited.emit()
+            if cat is not None:
+                row = [str(self.add_dialog.exp.expense_date),
+                       str(self.add_dialog.exp.amount),
+                       cat.name,
+                       self.add_dialog.exp.comment]
+                self.exp_mem_repo.add(self.add_dialog.exp)
+                len_exp_repo = len(self.exp_mem_repo.get_all())
+                if len_exp_repo > self.expense_table.rowCount():
+                    self.expense_table.insertRow(self.expense_table.rowCount())
+                for j, value in enumerate(row):
+                    self.expense_table.setItem(len_exp_repo - 1, j,
+                                               QtWidgets.QTableWidgetItem(value))
+                self.expenseEdited.emit()
 
     def edit_expense_dialog(self) -> None:
         """
@@ -135,12 +138,13 @@ class ExpenseView(QtWidgets.QWidget):
         if self.edit_dialog.exp is not None:
             exp = self.edit_dialog.exp
             cat = self.cat_mem_repo.get(exp.category)
-            row = [exp.expense_date, str(exp.amount), cat.name, exp.comment]
-            for j, value in enumerate(row):
-                self.expense_table.setItem(selected_row, j,
-                                           QtWidgets.QTableWidgetItem(value))
-            self.exp_mem_repo.update(exp)
-            self.expenseEdited.emit()
+            if cat is not None:
+                row = [str(exp.expense_date), str(exp.amount), cat.name, exp.comment]
+                for j, value in enumerate(row):
+                    self.expense_table.setItem(selected_row, j,
+                                               QtWidgets.QTableWidgetItem(value))
+                self.exp_mem_repo.update(exp)
+                self.expenseEdited.emit()
 
     def is_row_empty(self, selected_row: int) -> bool:
         """
@@ -156,8 +160,10 @@ class ExpenseView(QtWidgets.QWidget):
 if __name__ == '__main__':
     DB_FILE = 'bookkeeper/view/new_database.db'
     app = QtWidgets.QApplication(sys.argv)
-    category_repo = SQLiteRepository(db_file=DB_FILE, cls=Category)
-    expense_repo = SQLiteRepository(db_file=DB_FILE, cls=Expense)
+    category_repo: SQLiteRepository[Category] = SQLiteRepository(db_file=DB_FILE,
+                                                                 cls=Category)
+    expense_repo: SQLiteRepository[Expense] = SQLiteRepository(db_file=DB_FILE,
+                                                               cls=Expense)
     create_table_db(db_file=DB_FILE, cls=Category)
     create_table_db(db_file=DB_FILE, cls=Expense)
     category_mem_repo = MemoryRepository[Category]()
@@ -167,11 +173,16 @@ if __name__ == '__main__':
         category_mem_repo.add(cat)
     for exp in expense_repo.get_all():
         exp.pk = 0
+        if isinstance(exp.added_date, str):
+            exp.added_date = datetime.strptime(exp.added_date, '%Y-%m-%d %H:%M:%S')
+        if isinstance(exp.expense_date, str):
+            exp.expense_date = datetime.strptime(exp.expense_date, '%Y-%m-%d %H:%M:%S')
         expense_mem_repo.add(exp)
-    window = ExpenseView(exp_mem_repo=expense_mem_repo,
-                         cat_mem_repo=category_mem_repo)
+    window = QtWidgets.QMainWindow()
+    central_widget = ExpenseView(exp_mem_repo=expense_mem_repo,
+                                 cat_mem_repo=category_mem_repo)
+    window.setCentralWidget(central_widget)
     window.setWindowTitle('Expense View')
     window.resize(500, 500)
-    window.setLayout(window.layout)
     window.show()
     sys.exit(app.exec())

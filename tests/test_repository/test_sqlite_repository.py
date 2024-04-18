@@ -11,7 +11,7 @@ def create_db() -> None:
     """Создать базу данных для тестирования"""
     conn = sqlite3.connect('tests/test.db')
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE users")
+    cursor.execute("DROP TABLE IF EXISTS users")
     query = '''CREATE TABLE IF NOT EXISTS users (pk INTEGER PRIMARY KEY,
     name STRING,
     value INTEGER)'''
@@ -66,8 +66,7 @@ def test_update() -> None:
 def test_get() -> None:
     """Тест получения"""""
     pk = 100
-    with pytest.raises(ValueError):
-        repo.get(pk)
+    assert repo.get(pk) is None
 
 
 def test_get_all() -> None:

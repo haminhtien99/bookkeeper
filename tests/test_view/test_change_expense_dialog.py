@@ -31,13 +31,13 @@ def test_dialog_initialization(dialog):
 def test_auto_fill_date(dialog):
     """Тест автоматического заполнения даты"""
     dialog.auto_fill_date()
-    assert dialog.expense_date_line_edit.text() == datetime.now().strftime("%Y-%m-%d")
+    assert dialog.expense_date_line_edit.text() == datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
 def test_apply_change(dialog):
     """Тест применения изменений"""
     dialog.amount_line_edit.setText('50')
-    dialog.expense_date_line_edit.setText('2022-12-25')
+    dialog.expense_date_line_edit.setText('2022-12-25 12:00:00')
     dialog.combobox.setCurrentIndex(0)
     dialog.apply_change()
     assert dialog.result() == QtWidgets.QDialog.Accepted

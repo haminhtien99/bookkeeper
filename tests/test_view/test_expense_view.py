@@ -1,5 +1,6 @@
 """Тест для виджета расхода в главном окне"""
 import pytest
+import datetime
 from bookkeeper.view.expense_view import ExpenseView
 from bookkeeper.repository.memory_repository import MemoryRepository
 from bookkeeper.models.category import Category
@@ -13,7 +14,7 @@ def expense_view(qtbot):
     cat = Category(name='cat1')
     cat_repo.add(cat)
     exp_repo = MemoryRepository()
-    exp = Expense(expense_date='2022-12-25',
+    exp = Expense(expense_date=datetime.datetime(2024, 4, 17, 0, 0),
                   amount=50.0,
                   category=1,
                   comment='Test Comment')
@@ -32,7 +33,8 @@ def test_build_expense_widget(expense_view):
 def test_set_data(expense_view):
     """Тест установки данных"""""
     expense_view.set_data()
-    assert expense_view.expense_table.item(0, 0).text() == '2022-12-25'
+    date_str = str(datetime.datetime(2024, 4, 17, 0, 0))
+    assert expense_view.expense_table.item(0, 0).text() == date_str
 
 
 def test_delete_row(expense_view):
@@ -56,7 +58,7 @@ def test_add_expense_dialog(expense_view):
         exp = expense_view.add_dialog.exp
         assert len(expense_view.exp_mem_repo.get_all()) == 2
         assert expense_view.exp_mem_repo.get_all()[-1] == exp
-        assert exp.expense_date == expense_date
+        assert str(exp.expense_date) == expense_date
         assert exp.amount == float(amount)
         assert expense_view.cat_mem_repo.get(exp.category).name == category
         assert exp.comment == comment

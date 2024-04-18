@@ -2,7 +2,7 @@
 Модуль описывает репозиторий, работающий в БД SQLite
 """
 import sqlite3
-from typing import Any, Optional
+from typing import Any, List
 from inspect import get_annotations
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
@@ -30,7 +30,7 @@ class SQLiteRepository(AbstractRepository[T]):
         conn.close()
         return obj.pk
 
-    def get(self, pk: int) -> Optional[T]:
+    def get(self, pk: int) -> T | None:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             names = ', '.join(self.fields.keys())
@@ -38,20 +38,16 @@ class SQLiteRepository(AbstractRepository[T]):
             cur.execute(query)
             row = cur.fetchone()
             if row is None:
-                raise ValueError('attempt to get object with unknown primary key')
+                return None
         conn.close()
         obj_dict = dict(zip(self.fields.keys(), row))
-        for field, value in obj_dict.items():
-            if not isinstance(value, self.fields[field]):
-                # Если тип не соответствует ожидаемому, возвращаем None
-                return None
         obj_dict['pk'] = pk
-        obj = self.cls(**obj_dict)
+        obj: T = self.cls(**obj_dict)
         return obj
 
     def get_all(self,
                 where: dict[str, Any] | None = None,
-                value_range=False) -> list[T]:
+                value_range: bool = False) -> List[T]:
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             cur.execute(f"PRAGMA table_info({self.table_name})")
@@ -95,7 +91,9 @@ class SQLiteRepository(AbstractRepository[T]):
         conn.close()
 
     def delete(self, pk: int) -> None:
-        self.get(pk)
+        if self.get(pk) is None:
+            message = f'attempt to delete object with pk={pk} which does not exist'
+            raise ValueError(message)
         with sqlite3.connect(self.db_file) as conn:
             cur = conn.cursor()
             cur.execute(f"DELETE FROM {self.table_name} WHERE pk = {pk}")

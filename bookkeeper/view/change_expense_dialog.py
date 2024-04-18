@@ -17,6 +17,7 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
                  exp: Expense | None = None) -> None:
         super().__init__()
         self.setWindowTitle(title)
+        self.resize(500, 300)
         self.exp = exp
         layout = QtWidgets.QVBoxLayout()
         date_hbox = self.hbox_of_date()
@@ -37,7 +38,8 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         apply_change_button = QtWidgets.QPushButton('Apply')
         apply_change_button.clicked.connect(self.apply_change)
         layout.addWidget(apply_change_button)
-        cancel_button = QtWidgets.QPushButton('Cancel', clicked=self.reject)
+        cancel_button = QtWidgets.QPushButton('Cancel')
+        cancel_button.clicked.connect(self.reject)
         layout.addWidget(cancel_button)
         self.setLayout(layout)
 
@@ -46,10 +48,10 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         Виджет для получения даты расхода
         """
         date_hbox = QtWidgets.QHBoxLayout()
-        date_hbox.addWidget(QtWidgets.QLabel('Дата расхода(YYYY-MM-DD)'))
+        date_hbox.addWidget(QtWidgets.QLabel('Дата расхода\n(YYYY-MM-DD HH:MM:SS)'))
         self.expense_date_line_edit = QtWidgets.QLineEdit()
         if self.exp is not None:
-            self.expense_date_line_edit.setText(self.exp.expense_date)
+            self.expense_date_line_edit.setText(str(self.exp.expense_date))
         date_hbox.addWidget(self.expense_date_line_edit)
         self.auto_fill_date_button = QtWidgets.QPushButton('Автозаполнить')
         self.auto_fill_date_button.clicked.connect(self.auto_fill_date)
@@ -60,26 +62,30 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         """
         Автоматическое заполнение даты
         """
-        self.expense_date_line_edit.setText(datetime.datetime.now().strftime("%Y-%m-%d"))
+        datetime_now = str(datetime.datetime.now().replace(microsecond=0))
+        self.expense_date_line_edit.setText(datetime_now)
 
-    def apply_change(self):
+    def apply_change(self) -> None:
         """
         Проверяет данные
         Если данные корректны, получить изменение и закрыть диалог
         """
         comment = self.comment_line_edit.text()
         amount = self.amount_line_edit.text().strip()
-        expense_date = self.expense_date_line_edit.text().strip()
-        try:
-            category_obj = self.cat_repo.get(self.categories[self.combobox.currentText()])
-        except:
+        expense_date_str = self.expense_date_line_edit.text().strip()
+        where = {'name': self.combobox.currentText()}
+        if self.cat_repo.get_all(where=where)[0] is not None:
+            category_obj = self.cat_repo.get_all(where=where)[0]
+        else:
             show_warning_dialog(message='Создайте новую категорию',
                                 title='Add Expense')
             return
         cat = category_obj.pk
-        added_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if amount and expense_date:
-            if self.validate_data(amount=amount, expense_date=expense_date):
+        added_date = datetime.datetime.now().replace(microsecond=0)
+        if amount and expense_date_str:
+            if self.validate_data(amount=amount, expense_date=expense_date_str):
+                expense_date = datetime.datetime.strptime(expense_date_str,
+                                                          '%Y-%m-%d %H:%M:%S')
                 new_expense = Expense(comment=comment,
                                       amount=float(amount),
                                       category=cat,
@@ -99,7 +105,7 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
         Проверяет введенную дату на корректность
         """
         try:
-            datetime.datetime.strptime(expense_date, "%Y-%m-%d")
+            datetime.datetime.strptime(expense_date, '%Y-%m-%d %H:%M:%S')
             return True
         except ValueError:
             return False
@@ -113,12 +119,12 @@ class ChangeExpenseDialog(QtWidgets.QDialog):
                                 title='Apply Data')
             return False
         try:
-            amount = float(amount)
+            amount_ = float(amount)
         except ValueError:
             show_warning_dialog(message='Ошибка!  Сумма должна действительной',
                                 title='Apply Data')
             return False
-        if amount <= 0.:
+        if amount_ <= 0.:
             show_warning_dialog('Ошибка! Сумма должна быть положительной',
                                 title='Apply Data')
             return False

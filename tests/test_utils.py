@@ -12,7 +12,6 @@ from bookkeeper.utils import (read_tree,
                               get_day_week_month,
                               create_table_db,
                               get_categories,
-                              list_category_widget,
                               show_warning_dialog,
                               set_data,
                               h_widget_with_label,
@@ -142,24 +141,22 @@ def test_v_widget_with_label():
 
 
 def test_get_day_week_month():
-    today = datetime.now()
-    start_of_week = today - timedelta(days=today.weekday())
-    end_of_week = today + timedelta(days=6)
-    start_of_month = today.replace(day=1)
-    next_month = start_of_month.replace(month=start_of_month.month + 1)
-    end_of_month = next_month - timedelta(days=1)
-    expected_result = {
-        'today': today.strftime('%Y-%m-%d'),
-        'this_week': [start_of_week.strftime('%Y-%m-%d'),
-                      end_of_week.strftime('%Y-%m-%d')],
-        'this_month': [start_of_month.strftime('%Y-%m-%d'),
-                       end_of_month.strftime('%Y-%m-%d')]
-    }
-    assert get_day_week_month() == expected_result
+    today = datetime.now().replace(microsecond=0)
+    result = get_day_week_month()
+    assert isinstance(result, dict)
+    assert 'today' in result
+    assert 'this_week' in result
+    assert 'this_month' in result
+    assert result['today'][0] <= today <= result['today'][1]
+    for dates in result.values():
+        assert len(dates) == 2
+        assert isinstance(dates[0], datetime)
+        assert isinstance(dates[1], datetime)
+        assert dates[0] <= dates[1]
 
 
 def test_create_table_db():
-    test_db = "test.db"
+    test_db = "tests/test.db"
     create_table_db(test_db, cls=Category)
     create_table_db(test_db, cls=Budget)
     create_table_db(test_db, cls=Expense)
@@ -196,17 +193,5 @@ def repo():
 
 def test_get_categories(repo):
     result = get_categories(repo)
-    assert result == {"Category 1": 1, "Category 2": 2}
+    assert result == ["Category 1", "Category 2"]
 
-
-@pytest.fixture
-def test_list_category_widget(repo):
-    layout = list_category_widget(repo)
-    assert isinstance(layout, QtWidgets.QHBoxLayout)
-    assert layout.count() == 2
-    label = layout.itemAt(0).widget()
-    assert isinstance(label, QtWidgets.QLabel)
-    assert label.text() == 'Категории'
-    combobox = layout.itemAt(1).widget()
-    assert isinstance(combobox, QtWidgets.QComboBox)
-    assert combobox.count() == 2

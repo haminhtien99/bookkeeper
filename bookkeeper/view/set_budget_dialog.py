@@ -43,28 +43,28 @@ class SetBudgetDialog(QtWidgets.QDialog):
         week = self.edit_budget_weekly.text().strip()
         day = self.edit_budget_daily.text().strip()
         try:
-            month = float(month)
-            week = float(week)
-            day = float(day)
+            month_ = float(month)
+            week_ = float(week)
+            day_ = float(day)
         except ValueError:
             show_warning_dialog(message='Неверный тип данных',
                                 title='Set Budget')
             return
-        if month < 0 or week < 0 or day < 0:
+        if month_ < 0 or week_ < 0 or day_ < 0:
             show_warning_dialog(message='Бюджет не может быть отрицательным',
                                 title='Set Budget')
             return
-        if day > week:
+        if day_ > week_:
             show_warning_dialog(message='Бюджет дня должен быть меньше Бюджета недели',
                                 title='Set Budget')
             return
-        if week > month:
+        if week_ > month_:
             show_warning_dialog(message='Бюджет недели должен быть меньше Бюджета месяца',
                                 title='Set Budget')
             return
         self.budget = Budget(pk=1,
-                             month=month,
-                             week=week,
-                             day=day)
+                             month=month_,
+                             week=week_,
+                             day=day_)
         show_warning_dialog(message='Успешно!!', title='Edit')
         self.accept()

@@ -2,6 +2,7 @@
 Главное окно приложения.
 """
 import sys
+from datetime import datetime
 from PySide6 import QtWidgets
 from bookkeeper.utils import (h_widget_with_label,
                               show_warning_dialog,
@@ -30,58 +31,65 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('The Bookkeeper')
         self.setGeometry(100, 100, 400, 200)
         centralWidget = QtWidgets.QWidget()
-        self.layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout()
         self.exp_sql_repo = exp_sql_repo
         self.cat_sql_repo = cat_sql_repo
         self.budget_sql_repo = budget_sql_repo
         exp_mem_repo = MemoryRepository[Expense]()
-        cat_mem_repo = MemoryRepository[Expense]()
+        cat_mem_repo = MemoryRepository[Category]()
         for exp in exp_sql_repo.get_all():
             exp.pk = 0
+            if isinstance(exp.added_date, str):
+                exp.added_date = datetime.strptime(exp.added_date,
+                                                   '%Y-%m-%d %H:%M:%S')
+            if isinstance(exp.expense_date, str):
+                exp.expense_date = datetime.strptime(exp.expense_date,
+                                                     '%Y-%m-%d %H:%M:%S')
             exp_mem_repo.add(exp)
-        for exp in cat_sql_repo.get_all():
-            exp.pk = 0
-            cat_mem_repo.add(exp)
-        budget = Budget()
+        for cat in cat_sql_repo.get_all():
+            cat.pk = 0
+            cat_mem_repo.add(cat)
         if len(budget_sql_repo.get_all()) > 0:
-            budget = budget_sql_repo.get(1)
+            budget = budget_sql_repo.get_all()[0]
+        else:
+            budget = Budget()
         self.expense_widget = ExpenseView(exp_mem_repo=exp_mem_repo,
                                           cat_mem_repo=cat_mem_repo)
-        self.layout.addWidget(self.expense_widget)
+        layout.addWidget(self.expense_widget)
         self.budget_widget = BudgetView(budget, exp_mem_repo)
         self.expense_widget.expenseEdited.connect(self.update_budget_table)
-        self.layout.addWidget(self.budget_widget)
+        layout.addWidget(self.budget_widget)
         edit_category_button = QtWidgets.QPushButton('Редактировать категории')
         edit_category_button.clicked.connect(self.edit_category_dialog)
         self.category_window = CategoryWindow(cat_mem_repo)
         self.category_window.categoryEdited.connect(self.update_expense_table)
         self.category_window.categoryEdited.connect(self.update_category_list)
-        self.layout.addWidget(edit_category_button)
-        self.ls_categories = get_categories(cat_mem_repo).keys()
+        layout.addWidget(edit_category_button)
+        self.ls_categories = get_categories(cat_mem_repo)
         self.combobox = QtWidgets.QComboBox()
         self.combobox.addItems(self.ls_categories)
-        self.layout.addLayout(h_widget_with_label('Категории', self.combobox))
+        layout.addLayout(h_widget_with_label('Категории', self.combobox))
         save_button = QtWidgets.QPushButton('Save')
         save_button.clicked.connect(self.save_button_click)
-        self.layout.addWidget(save_button)
-        centralWidget.setLayout(self.layout)
+        layout.addWidget(save_button)
+        centralWidget.setLayout(layout)
         self.setCentralWidget(centralWidget)
         self.budget_widget.check_warning_budget()
 
-    def update_budget_table(self):
+    def update_budget_table(self) -> None:
         """
         Обновляет таблицу бюджета при изменении таблицы расходов.
         """
         self.budget_widget.update_expense_column(self.expense_widget.exp_mem_repo)
         self.budget_widget.check_warning_budget()
 
-    def edit_category_dialog(self):
+    def edit_category_dialog(self) -> None:
         """
         Редактировать категории
         """
         self.category_window.show()
 
-    def update_expense_table(self):
+    def update_expense_table(self) -> None:
         """
         Обновляет таблицу расходов после обновления репозитории категорий
         """
@@ -104,18 +112,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.category_window.deleted_cat = []
         self.expense_widget.cat_mem_repo = self.category_window.cat_mem_repo
         self.expense_widget.set_data()
-        self.budget_widget.update_expense_column(self.expense_widget.exp_mem_repo)
-        self.budget_widget.check_warning_budget()
+        # Обнавить таблицу бюджета после изменения таблицы расходов
+        self.update_budget_table()
 
-    def update_category_list(self):
+    def update_category_list(self) -> None:
         """
         Обновляет список категорий
         """
         self.combobox.clear()
-        self.ls_categories = get_categories(self.category_window.cat_mem_repo).keys()
+        self.ls_categories = get_categories(self.category_window.cat_mem_repo)
         self.combobox.addItems(self.ls_categories)
 
-    def save_button_click(self):
+    def save_button_click(self) -> None:
         """
         Сохранить изменения MainWindow
         """
@@ -131,21 +139,23 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(self.cat_sql_repo.get_all()) > 0:
             for cat in self.cat_sql_repo.get_all():
                 self.cat_sql_repo.delete(cat.pk)
-        for cat in self.category_window.cat_mem_repo.get_all():
-            self.cat_sql_repo.add(cat)
+        if len(self.category_window.cat_mem_repo.get_all()):
+            for cat in self.category_window.cat_mem_repo.get_all():
+                self.cat_sql_repo.add(cat)
 
-    def save_exp_repo(self):
+    def save_exp_repo(self) -> None:
         """
         Save expense table
         """
         if len(self.exp_sql_repo.get_all()) > 0:
             for exp in self.exp_sql_repo.get_all():
                 self.exp_sql_repo.delete(exp.pk)
-        for exp in self.expense_widget.exp_mem_repo.get_all():
-            exp.pk = 0
-            self.exp_sql_repo.add(exp)
+        if len(self.expense_widget.exp_mem_repo.get_all()) > 0:
+            for exp in self.expense_widget.exp_mem_repo.get_all():
+                exp.pk = 0
+                self.exp_sql_repo.add(exp)
 
-    def save_budget_repo(self):
+    def save_budget_repo(self) -> None:
         """
         Save budget table
         """
@@ -160,9 +170,12 @@ if __name__ == '__main__':
     Программа запускается
     """
     DB_FILE = 'bookkeeper/view/new_database.db'
-    budget_repo = SQLiteRepository(db_file=DB_FILE, cls=Budget)
-    expense_repo = SQLiteRepository(db_file=DB_FILE, cls=Expense)
-    category_repo = SQLiteRepository(db_file=DB_FILE, cls=Category)
+    budget_repo: SQLiteRepository[Budget] = SQLiteRepository(db_file=DB_FILE,
+                                                             cls=Budget)
+    expense_repo: SQLiteRepository[Expense] = SQLiteRepository(db_file=DB_FILE,
+                                                               cls=Expense)
+    category_repo: SQLiteRepository[Category] = SQLiteRepository(db_file=DB_FILE,
+                                                                 cls=Category)
     create_table_db(db_file=DB_FILE, cls=Budget)   # if table is not existing
     create_table_db(db_file=DB_FILE, cls=Expense)
     create_table_db(db_file=DB_FILE, cls=Category)
@@ -171,6 +184,6 @@ if __name__ == '__main__':
                         exp_sql_repo=expense_repo,
                         cat_sql_repo=category_repo)
     window.setWindowTitle('The Bookkeeper')
-    window.resize(500, 800)
+    window.resize(500, 700)
     window.show()
     sys.exit(app.exec())
